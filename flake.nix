@@ -16,6 +16,8 @@
       packages = forAllSystems (pkgs: {
         boondoggle = pkgs.callPackage ./packages/boondoggle { };
         foolfad = pkgs.callPackage ./packages/foolfad { };
+        ghwc = pkgs.callPackage ./packages/ghwc { };
+        ghwrc = pkgs.callPackage ./packages/ghwrc { };
         default = pkgs.writeShellApplication {
           name = "tissloolly";
           text = ''
