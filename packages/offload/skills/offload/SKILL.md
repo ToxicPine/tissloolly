@@ -18,28 +18,38 @@ to make, or when something costs money or needs a key.
 
 ## The tools
 
-Custom commands, already present on the remote machine:
+Three custom commands. You only ever run the first one — it does everything else for you, on the
+other computer.
 
-- **foolfad** — run from inside a git project. Pushes the project's current state to the machine as
-  a branch `foolfad/<user>/<run-id>` and runs the work there. It does not save what the work
-  changes; results come back only via the open-ended path below, or a command that pushes them
-  itself.
-- **boondoggle** — runs Codex toward a goal until it's done, then pushes the result back as a
-  branch. Use it (through foolfad) for open-ended tasks ("make this feature work") rather than one
-  exact command. Codex must be signed in on the machine first — see `references/codex-on-the-machine.md`.
-- **vusperize** — wraps a command to send live progress pings (e.g. Telegram) while it runs.
-  Optional. First-time Telegram setup: `references/setup-telegram.md`.
+- **foolfad** — runs here, on the user's own machine, from inside the git project. It pushes the
+  project's current state up to the other computer as a branch `foolfad/<user>/<run-id>`, then
+  starts the work over there. It doesn't bring results back on its own: a plain command has to push
+  whatever it changed itself, while the open-ended path below pushes results back for you.
+- **boondoggle** — runs over on the other computer, inside the copied-over project. It puts a coding
+  assistant (Codex) to work toward a goal, lets it run until the goal is done, then commits what
+  changed and pushes it back on the run branch. Reach for it (through foolfad) when the task is
+  open-ended — "make this feature work" — rather than one exact command. Codex has to be signed in
+  on that computer first — see `references/codex-on-the-machine.md`.
+- **vusperize** — also runs over on the other computer, wrapped around the work so it can send live
+  progress pings (for example to Telegram) while the job runs. Optional, nice for long jobs. If the
+  user wants Telegram pings and it's not set up yet, see `references/setup-telegram.md`.
 
-The machine keeps its files between restarts; your project's dependencies rebuild on it fresh. If no
-machine exists yet, set one up with `references/provision-remote-machine.md`. Otherwise assume one
-exists.
+So foolfad is the only one the user runs themselves; it reaches the other computer through a
+transport (see "Find the machine" below) and runs boondoggle and vusperize over there. That other
+computer keeps its files between restarts, rebuilds the project's dependencies fresh each time, and
+already has boondoggle, vusperize and the rest installed on it. If there's no such computer yet, set
+one up with `references/provision-remote-machine.md`. Otherwise assume one exists.
 
 ## Running the hand-off
 
-**Nix must be installed locally.** The machine rebuilds the project's environment from its
-`flake.nix`, which needs Nix here too. If `nix` is missing, point the user at
-https://install.determinate.systems and offer to run the installer. If foolfad/boondoggle/vusperize
-aren't installed locally, run them from source: `nix run github:ToxicPine/tissloolly#foolfad -- …`.
+**Nix must be installed on the user's own machine.** The other computer rebuilds the project's
+environment from its `flake.nix`, and Nix is what makes that work, so it has to be here too. If
+`nix` is missing, point the user at https://install.determinate.systems and offer to run the
+installer. The only pieces that need to be here locally are foolfad and the transport it uses
+(`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`) — boondoggle and vusperize live on the other
+computer. If foolfad or its transport isn't installed here, run from source, e.g.
+`nix run github:ToxicPine/tissloolly#foolfad -- …` (the transports are in the `foolfad-transports`
+package).
 
 **Check the project rebuilds over there.** Glance at `flake.nix` and any `.envrc`: will the rebuilt
 project have the dependencies and settings this task needs? A sanity check, not an audit. If it's
