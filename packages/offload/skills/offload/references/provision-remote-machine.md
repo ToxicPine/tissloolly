@@ -90,6 +90,10 @@ Do one trivial hand-off end to end before sending anything important, e.g. from 
 `foolfad -- bash -lc 'echo ok && git rev-parse HEAD'`. Confirm the run branch shows up and the
 machine reached the repo. Once that's clean, go back to the offload skill and send the real task.
 
+If the user plans to use the open-ended path (`boondoggle`), the coding assistant (Codex) also
+needs to be signed in on the machine once — that's a separate one-time step covered in
+`references/codex-on-the-machine.md`. Fixed-command hand-offs don't need it.
+
 A note on where secrets go: anything the *machine itself* needs (tokens, keys) goes in
 `ambit secrets set`, kept out of any project. Anything the *work* needs (per-project settings)
 goes in the project's devShell, or encrypted into a file in the project (age/sops) as the offload

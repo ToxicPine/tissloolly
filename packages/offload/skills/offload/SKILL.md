@@ -31,9 +31,11 @@ each one does:
   the other computer (as a branch named `foolfad/<user>/<run-id>`) and runs the work there. This
   is the hand-off itself. On its own it does not save whatever the work changes — see "Hand it
   off" below for how the results come back.
-- **boondoggle** — runs a coding assistant on its own toward a goal you give it, working until
-  the goal is done, then saving and sending the result back as a branch. Use this (through
+- **boondoggle** — runs a coding assistant (Codex) on its own toward a goal you give it, working
+  until the goal is done, then saving and sending the result back as a branch. Use this (through
   foolfad) when the task is open-ended — "make this feature work" — rather than one exact command.
+  Codex has to be signed in on the machine for this to work — a one-time setup, and also how the
+  user can check in on a run and steer it from their phone. See `references/codex-on-the-machine.md`.
 - **vusperize** — wraps a command so it can send live progress pings to something like Telegram
   while it runs. Optional, nice for long jobs or when the user wants updates. If the user wants
   Telegram pings (or to chat with the agent on the machine from their phone) and that isn't set up
@@ -86,7 +88,10 @@ where the user might get confused, so be clear about it:
   To get any changes it makes back, the command has to save and send them itself — or use the
   open-ended path below, which sends results back for you.
 - For an open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. The coding
-  assistant works until it's done and sends what it produced back as a branch.
+  assistant works until it's done and sends what it produced back as a branch. This uses Codex, so
+  it has to be signed in on the machine first — if it isn't, the run fails before it starts.
+  Signing in is a one-time, device-code step, and once done the user can also check in on the run
+  and steer it from another device. Walk through it with `references/codex-on-the-machine.md`.
 
 foolfad moves into the project on the other computer itself, so the environment loads on its own —
 you don't need to wrap anything to make that happen. For long jobs or progress pings, wrap the
