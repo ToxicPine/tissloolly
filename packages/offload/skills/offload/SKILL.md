@@ -1,8 +1,6 @@
 ---
 name: offload
 description: Use when the user wants to run a long or heavy task on another computer instead of their own — so their own machine stays free, the work keeps going even if they close their laptop or lose their connection, and the finished result comes back to them as a branch in their project, ready to review and merge. If there is no other computer set up yet, this skill helps them set one up.
-disable-model-invocation: true   # Claude Code only; Codex ignores it
-allowed-tools: Bash, Read         # Claude Code only; Codex ignores it
 argument-hint: <plain description of the work to hand off>
 ---
 
@@ -22,7 +20,7 @@ Three custom commands. You only ever run the first one — it does everything el
 other computer.
 
 - **foolfad** — runs here, on the user's own machine, from inside the git project. It pushes the
-  project's current state up to the other computer as a branch `foolfad/<user>/<run-id>`, then
+  project's current state up to the other computer as a branch `foolfad/<run-id>`, then
   starts the work over there. It doesn't bring results back on its own: a plain command has to push
   whatever it changed itself, while the open-ended path below pushes results back for you.
 - **boondoggle** — runs over on the other computer, inside the copied-over project. It puts a coding
@@ -80,9 +78,11 @@ The work starts already inside the project directory over there, so its environm
 `.envrc`) loads on its own — you don't need to wrap a `cd` or `nix develop` around it. For long jobs
 or progress pings, wrap the command with vusperize, which runs alongside it on the machine.
 
-**Report back:** the branch the work lands on, the machine and its address
-(`http://<machine>.<network>`), and that the user can check progress later with the foolfad-target
-or boondoggle-runs skills.
+**Report back:** the branch the work lands on, the machine it ran on, and how progress can be
+checked later. `foolfad-target` and `boondoggle-runs` are target-side skills: they are useful when
+the user is talking to an agent on the remote machine (for example over Telegram), not from the
+local checkout. If the user is local only, use `FOOLFAD_TRANSPORT` to run a target-side command that
+asks the remote agent/Codex to inspect the run there and print the answer back here.
 
 ## Follow-up questions
 

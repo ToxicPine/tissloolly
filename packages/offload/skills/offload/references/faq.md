@@ -70,16 +70,21 @@ target; just set the transport to point at it.
 
 One caveat for a hand-rolled box (one you set up yourself rather than through the provisioning
 doc): the convenient parts the provisioned image gives you for free aren't automatic. The box needs
-a writable `/data` directory that survives restarts (that's where repos and worktrees live), git
-set up with credentials that can read and write the user's repos, and — if you want the open-ended
+a writable home directory that survives restarts. By default foolfad keeps repos under
+`~/.remote-work`, with `.bare` beside branch-named worktree directories. The box also needs git set
+up with credentials that can read and write the user's repos, and — if you want the open-ended
 `boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and Codex signed in on the
-machine. Fixed-command hand-offs (`foolfad -- <command>`) only need `/data` and git; the rest is
-just for the open-ended path. The web proxy and the `http://<machine>.<network>/<port>/` links
+machine. Fixed-command hand-offs (`foolfad -- <command>`) only need persistent home storage and git;
+the rest is just for the open-ended path. The web proxy and the `http://<machine>.<network>/<port>/` links
 above come from the provisioned setup too, so a bare SSH box won't have them unless you add one.
 
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 
 That's a different question from viewing a web page, and it's handled by other skills:
 `foolfad-target` for the state of a handed-off run on the machine, and `boondoggle-runs` for an
-open-ended (coding-assistant) run's progress and when it finishes. The finished result comes back
-as the branch this skill reported.
+open-ended (coding-assistant) run's progress and when it finishes.
+
+Those are target-side skills. If the user is already talking to an agent on the machine, for
+example through Telegram, that agent should use them directly. If you only have the local machine,
+use the saved `FOOLFAD_TRANSPORT` to ask the target-side agent/Codex to answer from over there and
+print the result back locally. The finished code still comes back as the branch this skill reported.

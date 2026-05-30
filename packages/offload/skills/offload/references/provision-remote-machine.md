@@ -112,7 +112,6 @@ direnv, or a secrets manager) so none of this has to be done again.
 
 - If the project's git remote isn't the one the machine should pull from, also set
   `FOOLFAD_REPO_URL` (the URL to push to and clone from) and/or `FOOLFAD_REMOTE_NAME`.
-  `FOOLFAD_USER` changes the user part of the run branch name if a different one is wanted.
 
 ## 8. Try a tiny run before anything real
 Do one trivial hand-off end to end before sending anything important, e.g. from a test repo:

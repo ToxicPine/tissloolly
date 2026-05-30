@@ -2,6 +2,12 @@
 
 # foolfad transport adapters, shipped together so all three land on PATH at once.
 let
+  openssh-client = pkgs.openssh.override {
+    withFIDO = false;
+    withPAM = false;
+    withSecurityKey = false;
+  };
+
   # Client-only tailscale: build just cmd/tailscale, dropping the tailscaled
   # daemon, its wrapped deps (iproute2/iptables/shadow/procps), and the systemd
   # unit — none of which `tailscale ssh` needs.
@@ -21,9 +27,9 @@ in
 pkgs.symlinkJoin {
   name = "foolfad-transports";
   paths = [
-    (mkAdapter "foolfad-ssh" [ pkgs.openssh ])
+    (mkAdapter "foolfad-ssh" [ openssh-client ])
     # tailscale ssh execs the system ssh, so openssh is needed too.
-    (mkAdapter "foolfad-tailscale" [ tailscale-lite pkgs.openssh ])
-    (mkAdapter "foolfad-fly" [ pkgs.flyctl ])
+    (mkAdapter "foolfad-tailscale" [ tailscale-lite openssh-client ])
+    (mkAdapter "foolfad-fly" [ pkgs.coreutils pkgs.flyctl ])
   ];
 }

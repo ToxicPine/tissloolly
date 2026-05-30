@@ -7,7 +7,7 @@ description: Use for dispatching a command from the current git repo to a remote
 
 Use `foolfad` when the user wants to run a command from the current git repository on a configured remote target machine.
 
-Run it from inside the source repository. The tool pushes the current `HEAD` to the repository remote, pushes a run branch named `foolfad/<user>/<run-id>`, connects to the target machine through a transport command, creates or refreshes a target worktree, and runs the requested command there.
+Run it from inside the source repository. The tool pushes the current `HEAD` to the repository remote, pushes a run branch named `foolfad/<run-id>`, connects to the target machine through a transport command, creates or refreshes a target worktree, and runs the requested command there.
 
 Typical usage:
 
@@ -47,13 +47,12 @@ If the repo has no remote, set `FOOLFAD_REPO_URL`. If the desired remote is not 
 - `FOOLFAD_REPO_ROOT` sets the source repo root when `$PWD` is not enough.
 - `FOOLFAD_REPO_URL` sets the remote URL pushed to and cloned from.
 - `FOOLFAD_REMOTE_NAME` selects which local git remote to use.
-- `FOOLFAD_REPO_PATH` overrides the target path segment under `/data/with-runners/repos`.
-- `FOOLFAD_USER` changes the user segment in the run branch and worktree path.
+- `FOOLFAD_REPO_PATH` overrides the target repo path segment under `repos/`.
 - `FOOLFAD_RUN_ID` fixes the run id instead of generating one.
-- `FOOLFAD_WORKTREE_NAME` overrides the target worktree path suffix.
+- `FOOLFAD_WORKTREE_NAME` overrides the target worktree directory name. By default it is derived from the run branch, so `foolfad/<run-id>` becomes `foolfad-<run-id>`.
 - `FOOLFAD_RUN_BRANCH` overrides the pushed run branch.
 - `FOOLFAD_BASE_BRANCH` records the source branch used as the base branch.
-- `FOOLFAD_WITH_RUNNERS_DIR` changes the target root, defaulting to `/data/with-runners`.
+- `FOOLFAD_REMOTE_ROOT` changes the target root, defaulting on the remote to `~/.remote-work`.
 - `FOOLFAD_TRANSPORT` sets the transport command; `--transport` overrides it per call.
 
 ## What To Report
@@ -61,8 +60,8 @@ If the repo has no remote, set `FOOLFAD_REPO_URL`. If the desired remote is not 
 After dispatching, report the command that was launched, the transport (and the host/app it points at), and the branch/worktree identifiers when they are known:
 
 ```text
-foolfad/<user>/<run-id>
-/data/with-runners/repos/<repo-path>/worktrees/<user>/<run-id>
+foolfad/<run-id>
+~/.remote-work/repos/<repo-path>/foolfad-<run-id>
 ```
 
 For later status checks on the target machine, use the `foolfad-target` skill.
