@@ -84,8 +84,6 @@ choose how to connect:
   if the user prefers, or for a machine reachable over regular SSH.
 - **Fly:** `npx @cardelli/ambit status app <machine>.<network> --json` — note the Fly app name and
   the machine id, then set `FOOLFAD_TRANSPORT='foolfad-fly --app <app> --machine <machine-id>'`.
-  (Setting `FOOLFAD_APP` and `FOOLFAD_MACHINE_ID` instead also works — foolfad derives the same fly
-  transport from them — but `FOOLFAD_TRANSPORT` is the clearer, device-agnostic knob.)
 
 Whichever you pick, the named adapter (`foolfad-ssh`, `foolfad-tailscale`, `foolfad-fly`) must be on
 the user's `PATH`, and the setting must be saved somewhere their shells pick it up (shell profile,

@@ -29,22 +29,14 @@ export FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'  # Fly.
 foolfad -- npm run test
 ```
 
-The adapter you name must be on `PATH`. For SSH/Tailscale the argument is the host (the same `<machine>.<network>` the offload skill uses); extra args are passed straight through (ports, identities, jump hosts).
-
-For backwards compatibility, if `FOOLFAD_TRANSPORT` is unset but `FOOLFAD_APP` and `FOOLFAD_MACHINE_ID` are set, foolfad derives a `foolfad-fly` transport from them automatically:
-
-```bash
-export FOOLFAD_APP="fly-app-name"
-export FOOLFAD_MACHINE_ID="machine-id"
-foolfad -- npm run test   # uses foolfad-fly under the hood
-```
+The adapter you name must be on `PATH`. For SSH/Tailscale the argument is the host (the same `<machine>.<network>` the offload skill uses); extra args are passed straight through (ports, identities, jump hosts). foolfad itself knows nothing about any provider — it just pipes the work into whatever the transport names, and there is no default, so a transport must always be set.
 
 ## Required Context
 
 Before launching, confirm these are true:
 
 - The current directory is inside the git repository the user wants to dispatch.
-- A transport is configured: `FOOLFAD_TRANSPORT` (or `--transport`), or `FOOLFAD_APP` + `FOOLFAD_MACHINE_ID` for the fly default. The named transport command is installed.
+- A transport is configured via `FOOLFAD_TRANSPORT` (or `--transport`), and the named transport command is installed.
 - The local repo has a usable remote, or `FOOLFAD_REPO_URL` is set explicitly.
 - The command is safe to run on the target worktree.
 

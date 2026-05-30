@@ -41,8 +41,6 @@ Set it with --transport or FOOLFAD_TRANSPORT, for example:
   FOOLFAD_TRANSPORT='foolfad-ssh box.lab'
   FOOLFAD_TRANSPORT='foolfad-tailscale box.lab'
   FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'
-If FOOLFAD_TRANSPORT is unset but FOOLFAD_APP and FOOLFAD_MACHINE_ID are set, a
-foolfad-fly transport is derived from them for backwards compatibility.
 
 Examples:
   foolfad -- npm run dev
@@ -52,10 +50,10 @@ Examples:
 
 Other useful env overrides:
   FOOLFAD_REPO_ROOT, FOOLFAD_REPO_URL, FOOLFAD_REMOTE_NAME, FOOLFAD_REPO_PATH,
-  FOOLFAD_TRANSPORT, FOOLFAD_APP, FOOLFAD_MACHINE_ID, FOOLFAD_USER,
-  FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME, FOOLFAD_RUN_BRANCH, FOOLFAD_BASE_BRANCH,
-  FOOLFAD_WITH_RUNNERS_DIR, FOOLFAD_REMOTE_DIR, FOOLFAD_BARE_DIR,
-  FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND, FOOLFAD_CONFIG
+  FOOLFAD_TRANSPORT, FOOLFAD_USER, FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME,
+  FOOLFAD_RUN_BRANCH, FOOLFAD_BASE_BRANCH, FOOLFAD_WITH_RUNNERS_DIR,
+  FOOLFAD_REMOTE_DIR, FOOLFAD_BARE_DIR, FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND,
+  FOOLFAD_CONFIG
 USAGE
 }
 
@@ -241,20 +239,13 @@ if [[ -z "${REPO_URL}" ]]; then
 fi
 
 FOOLFAD_REPO_PATH="${FOOLFAD_REPO_PATH:-$(repo_path_from_url "${REPO_URL}")}"
-FOOLFAD_APP="${FOOLFAD_APP:-}"
-FOOLFAD_MACHINE_ID="${FOOLFAD_MACHINE_ID:-}"
 
-# Resolve the transport: an explicit --transport flag wins, then FOOLFAD_TRANSPORT,
-# then a foolfad-fly transport derived from FOOLFAD_APP/FOOLFAD_MACHINE_ID so existing
-# fly setups keep working without any new configuration.
+# Resolve the transport: an explicit --transport flag wins, otherwise FOOLFAD_TRANSPORT.
+# foolfad is transport-agnostic; the transport string names whatever command reaches the
+# machine (e.g. foolfad-ssh, foolfad-tailscale, foolfad-fly), and foolfad never defaults it.
 FOOLFAD_TRANSPORT="${TRANSPORT_OVERRIDE:-${FOOLFAD_TRANSPORT:-}}"
-if [[ -z "${FOOLFAD_TRANSPORT}" ]]; then
-  if [[ -n "${FOOLFAD_APP}" && -n "${FOOLFAD_MACHINE_ID}" ]]; then
-    FOOLFAD_TRANSPORT="foolfad-fly --app $(shell_quote_word "${FOOLFAD_APP}") --machine $(shell_quote_word "${FOOLFAD_MACHINE_ID}")"
-  else
-    die "no transport configured: set FOOLFAD_TRANSPORT (e.g. 'foolfad-ssh box.lab'), pass --transport, or set FOOLFAD_APP and FOOLFAD_MACHINE_ID for the fly default"
-  fi
-fi
+[[ -n "${FOOLFAD_TRANSPORT}" ]] \
+  || die "no transport configured: set FOOLFAD_TRANSPORT (e.g. 'foolfad-ssh box.lab') or pass --transport"
 
 TRANSPORT_BIN="${FOOLFAD_TRANSPORT%% *}"
 command -v "${TRANSPORT_BIN}" >/dev/null 2>&1 \
