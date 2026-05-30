@@ -1,13 +1,10 @@
 { pkgs, ... }:
 
 pkgs.writeShellApplication {
-  name = "boondoggle";
+  name = "vusperize";
   runtimeInputs = with pkgs; [
     coreutils
-    git
-    gnused
     jq
-    codex
   ];
-  text = builtins.readFile ./boondoggle.sh;
+  text = builtins.readFile ./vusperize.sh;
 }

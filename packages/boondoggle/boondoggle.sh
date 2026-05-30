@@ -2,24 +2,156 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 < PROMPT" >&2
+  cat >&2 <<'EOF'
+Usage: boondoggle [OPTIONS] < PROMPT
+
+Options:
+  --model VALUE
+  --approval-policy VALUE
+  --ask-for-approval VALUE
+  --sandbox VALUE
+  --effort VALUE
+  --reasoning-effort VALUE
+  --personality VALUE
+  --summary VALUE
+  --thread-config-json JSON
+  --profile VALUE
+  --listen VALUE
+  -h, --help
+EOF
 }
 
-normalize_task_name() {
-  local name
-  name="${1%%$'\n'*}"
-  name="${name:0:80}"
-  printf '%s\n' "${name}" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/^$/prompt/'
+option_value() {
+  local option="$1"
+  local value="${2:-}"
+
+  if [[ -z "${value}" ]]; then
+    printf 'boondoggle: %s requires a value\n' "${option}" >&2
+    exit 2
+  fi
+
+  printf '%s\n' "${value}"
 }
 
-if [[ $# -ne 0 ]]; then
-  usage
-  exit 1
-fi
+append_if_set() {
+  local -n target_args="$1"
+  local flag="$2"
+  local value="$3"
+
+  if [[ -n "${value}" ]]; then
+    target_args+=("${flag}" "${value}")
+  fi
+}
 
 ROOT="${ROOT:-$(pwd)}"
+BOONDOGGLE_MODEL="${BOONDOGGLE_MODEL:-gpt-5.5}"
+BOONDOGGLE_APPROVAL_POLICY="${BOONDOGGLE_APPROVAL_POLICY:-never}"
+BOONDOGGLE_SANDBOX="${BOONDOGGLE_SANDBOX:-danger-full-access}"
+BOONDOGGLE_EFFORT="${BOONDOGGLE_EFFORT:-}"
+BOONDOGGLE_PERSONALITY="${BOONDOGGLE_PERSONALITY:-}"
+BOONDOGGLE_SUMMARY="${BOONDOGGLE_SUMMARY:-}"
+BOONDOGGLE_THREAD_CONFIG_JSON="${BOONDOGGLE_THREAD_CONFIG_JSON:-}"
+BOONDOGGLE_PROFILE="${BOONDOGGLE_PROFILE:-}"
+BOONDOGGLE_LISTEN="${BOONDOGGLE_LISTEN:-}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --model)
+      BOONDOGGLE_MODEL="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --model=*)
+      BOONDOGGLE_MODEL="${1#*=}"
+      shift
+      ;;
+    --approval-policy|--ask-for-approval)
+      BOONDOGGLE_APPROVAL_POLICY="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --approval-policy=*|--ask-for-approval=*)
+      BOONDOGGLE_APPROVAL_POLICY="${1#*=}"
+      shift
+      ;;
+    --sandbox)
+      BOONDOGGLE_SANDBOX="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --sandbox=*)
+      BOONDOGGLE_SANDBOX="${1#*=}"
+      shift
+      ;;
+    --effort|--reasoning-effort)
+      BOONDOGGLE_EFFORT="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --effort=*|--reasoning-effort=*)
+      BOONDOGGLE_EFFORT="${1#*=}"
+      shift
+      ;;
+    --personality)
+      BOONDOGGLE_PERSONALITY="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --personality=*)
+      BOONDOGGLE_PERSONALITY="${1#*=}"
+      shift
+      ;;
+    --summary)
+      BOONDOGGLE_SUMMARY="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --summary=*)
+      BOONDOGGLE_SUMMARY="${1#*=}"
+      shift
+      ;;
+    --thread-config-json)
+      BOONDOGGLE_THREAD_CONFIG_JSON="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --thread-config-json=*)
+      BOONDOGGLE_THREAD_CONFIG_JSON="${1#*=}"
+      shift
+      ;;
+    --profile)
+      BOONDOGGLE_PROFILE="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --profile=*)
+      BOONDOGGLE_PROFILE="${1#*=}"
+      shift
+      ;;
+    --listen)
+      BOONDOGGLE_LISTEN="$(option_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --listen=*)
+      BOONDOGGLE_LISTEN="${1#*=}"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      if [[ $# -ne 0 ]]; then
+        usage
+        exit 2
+      fi
+      break
+      ;;
+    *)
+      printf 'boondoggle: unsupported option: %s\n' "$1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq required for JSON escaping/parsing" >&2
+  exit 1
+fi
 
 PROMPT="$(cat)"
 PROMPT_LENGTH=${#PROMPT}
@@ -33,11 +165,6 @@ if (( PROMPT_LENGTH > 4000 )); then
   echo "boondoggle: read ${PROMPT_LENGTH} characters from stdin; prompts over 4000 characters may be harder to inspect in logs" >&2
 fi
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "jq required for JSON escaping/parsing" >&2
-  exit 1
-fi
-
 REQ_ID=0
 LAST_REQ_ID=""
 THREAD_ID=""
@@ -47,50 +174,16 @@ RESUME_SENT=0
 GOAL_GET_REQUEST_ID=""
 THREAD_LOGGED=0
 PUBLISH_ATTEMPTED=0
-SPRITE_AVAILABLE=0
-SPRITE_TASK_NAME="${SPRITE_TASK_NAME:-$(normalize_task_name "${PROMPT}")}"
-SPRITE_TASK_EXPIRE="${SPRITE_TASK_EXPIRE:-5m}"
-SPRITE_HEARTBEAT_INTERVAL="${SPRITE_HEARTBEAT_INTERVAL:-60}"
-SPRITE_HEARTBEAT_PID=""
 GIT_PUBLISH_ON_GOAL_SUCCESS="${GIT_PUBLISH_ON_GOAL_SUCCESS:-1}"
 GIT_PUBLISH_ON_GOAL_FAILURE="${GIT_PUBLISH_ON_GOAL_FAILURE:-1}"
 GIT_PUBLISH_ON_UNEXPECTED_EXIT="${GIT_PUBLISH_ON_UNEXPECTED_EXIT:-1}"
 GIT_COMMIT_MESSAGE="${GIT_COMMIT_MESSAGE:-Codex Goal Worktree State}"
+CODEX_GLOBAL_ARGS=()
+CODEX_APP_ARGS=()
 CODEX_APP_PID=""
 
-heartbeat_once() {
-  local payload
-
-  if [[ "${SPRITE_AVAILABLE}" -ne 1 ]]; then
-    return 0
-  fi
-
-  payload="$(jq -cn --arg expire "${SPRITE_TASK_EXPIRE}" '{expire: $expire}')"
-  if curl -fsS --unix-socket /.sprite/api.sock \
-    -H "Content-Type: application/json" \
-    -X PUT "http://sprite/v1/tasks/${SPRITE_TASK_NAME}" \
-    -d "${payload}" >/dev/null; then
-    return 0
-  fi
-  return 0
-}
-
-start_sprite_heartbeat() {
-  if [[ ! -S /.sprite/api.sock ]] || ! command -v curl >/dev/null 2>&1; then
-    return 0
-  fi
-  SPRITE_AVAILABLE=1
-
-  heartbeat_once
-
-  (
-    while true; do
-      sleep "${SPRITE_HEARTBEAT_INTERVAL}"
-      heartbeat_once
-    done
-  ) &
-  SPRITE_HEARTBEAT_PID="$!"
-}
+append_if_set CODEX_GLOBAL_ARGS --profile-v2 "${BOONDOGGLE_PROFILE}"
+append_if_set CODEX_APP_ARGS --listen "${BOONDOGGLE_LISTEN}"
 
 send_raw() {
   local msg="$1"
@@ -181,16 +274,41 @@ notify() {
   send_raw "${payload}"
 }
 
+thread_config_payload() {
+  local payload
+
+  payload="$(jq -cn \
+    --arg cwd "${ROOT}" \
+    --arg model "${BOONDOGGLE_MODEL}" \
+    --arg approvalPolicy "${BOONDOGGLE_APPROVAL_POLICY}" \
+    --arg sandbox "${BOONDOGGLE_SANDBOX}" \
+    '{
+      cwd: $cwd,
+      model: $model,
+      approvalPolicy: $approvalPolicy,
+      sandbox: $sandbox
+    }')"
+
+  if [[ -n "${BOONDOGGLE_THREAD_CONFIG_JSON}" ]]; then
+    payload="$(jq -c --argjson overrides "${BOONDOGGLE_THREAD_CONFIG_JSON}" '. + $overrides' <<<"${payload}")"
+  fi
+  if [[ -n "${BOONDOGGLE_EFFORT}" ]]; then
+    payload="$(jq -c --arg effort "${BOONDOGGLE_EFFORT}" '.effort = $effort' <<<"${payload}")"
+  fi
+  if [[ -n "${BOONDOGGLE_PERSONALITY}" ]]; then
+    payload="$(jq -c --arg personality "${BOONDOGGLE_PERSONALITY}" '.personality = $personality' <<<"${payload}")"
+  fi
+  if [[ -n "${BOONDOGGLE_SUMMARY}" ]]; then
+    payload="$(jq -c --arg summary "${BOONDOGGLE_SUMMARY}" '.summary = $summary' <<<"${payload}")"
+  fi
+
+  printf '%s\n' "${payload}"
+}
+
 resume_thread() {
   local payload
 
-  payload="$(jq -cn --arg threadId "${THREAD_ID}" --arg cwd "${ROOT}" '{
-    threadId: $threadId,
-    cwd: $cwd,
-    model: "gpt-5.5",
-    approvalPolicy: "never",
-    sandbox: "danger-full-access"
-  }')"
+  payload="$(thread_config_payload | jq -c --arg threadId "${THREAD_ID}" '. + {threadId: $threadId}')"
   send thread/resume "${payload}"
   RESUME_SENT=1
 }
@@ -259,9 +377,8 @@ commit_worktree_state() {
 
   subject="${GIT_COMMIT_MESSAGE}: status=${run_status}"
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  body="$(printf 'Prompt: stdin (%s characters)\nTask: %s\nStatus: %s\nExit Status: %s\nThread: %s\nUTC: %s\n' \
+  body="$(printf 'Prompt: stdin (%s characters)\nStatus: %s\nExit Status: %s\nThread: %s\nUTC: %s\n' \
     "${PROMPT_LENGTH}" \
-    "${SPRITE_TASK_NAME}" \
     "${run_status}" \
     "${exit_status:-n/a}" \
     "${THREAD_ID:-unknown}" \
@@ -393,41 +510,24 @@ trap '
     publish_worktree_state "unexpected-exit" "$status" || true
   fi
 
-  if [[ -n "$SPRITE_HEARTBEAT_PID" ]]; then
-    kill "$SPRITE_HEARTBEAT_PID" 2>/dev/null || true
-    wait "$SPRITE_HEARTBEAT_PID" 2>/dev/null || true
-  fi
-
-  if [[ "$SPRITE_AVAILABLE" -eq 1 ]]; then
-    curl -fsS --unix-socket /.sprite/api.sock \
-      -H "Content-Type: application/json" \
-      -X DELETE "http://sprite/v1/tasks/$SPRITE_TASK_NAME" >/dev/null || true
-  fi
-
   [[ -n "${CODEX_APP_PID:-}" ]] && kill "$CODEX_APP_PID" 2>/dev/null || true
 
   exit "$status"
 ' EXIT
 
-start_sprite_heartbeat
+coproc CODEX_APP { codex "${CODEX_GLOBAL_ARGS[@]}" app-server "${CODEX_APP_ARGS[@]}" 2>&1; }
 
-coproc CODEX_APP { codex app-server 2>&1; }
-
-send initialize '{
-  "clientInfo": {
-    "name": "meta_goal_runner",
-    "title": "Meta Goal Runner",
-    "version": "0.1.0"
+initialize_payload="$(jq -cn '{
+  clientInfo: {
+    name: "boondoggle",
+    title: "boondoggle - ToxicPine'\''s Favourite CLI Tool",
+    version: "0.1.0"
   },
-  "capabilities": {"experimentalApi": true}
-}'
-notify initialized '{}'
-thread_start_payload="$(jq -cn --arg cwd "${ROOT}" '{
-  cwd: $cwd,
-  model: "gpt-5.5",
-  approvalPolicy: "never",
-  sandbox: "danger-full-access"
+  capabilities: {experimentalApi: true}
 }')"
+send initialize "${initialize_payload}"
+notify initialized '{}'
+thread_start_payload="$(thread_config_payload)"
 send thread/start "${thread_start_payload}"
 
 while IFS= read -r line <&"${CODEX_APP[0]}"; do
