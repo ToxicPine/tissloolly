@@ -1,22 +1,15 @@
 { pkgs, ... }:
 
-# foolfad transport adapters, shipped as one package. Each adapter is a small
-# command that takes a script on stdin, runs it under "bash -s" on the remote,
-# and forwards stdout/stderr and the exit status — the contract foolfad expects
-# from FOOLFAD_TRANSPORT. They differ only in how they reach the machine.
+# foolfad transport adapters, shipped together so all three land on PATH at once.
 let
-  # `tailscale ssh` only talks to the local tailscaled socket and then execs the
-  # system ssh; it never runs the daemon itself. So the adapter needs just the
-  # client CLI, not tailscaled. nixpkgs' `tailscale` builds the daemon and
-  # symlinks `tailscale` -> `tailscaled`, wrapping it with iproute2/iptables/
-  # shadow/procps on PATH — and procps drags libsystemd into the closure.
-  # Building only cmd/tailscale gives a standalone client binary and drops all of
-  # that daemon baggage (no systemd).
-  tailscale-lite = pkgs.tailscale.overrideAttrs (old: {
+  # Client-only tailscale: build just cmd/tailscale, dropping the tailscaled
+  # daemon, its wrapped deps (iproute2/iptables/shadow/procps), and the systemd
+  # unit — none of which `tailscale ssh` needs.
+  tailscale-lite = pkgs.tailscale.overrideAttrs (_: {
     pname = "tailscale-lite";
     subPackages = [ "cmd/tailscale" ];
     outputs = [ "out" ];
-    postInstall = ""; # skip tailscaled wrapping, the systemd unit, and the symlink
+    postInstall = "";
   });
 
   mkAdapter = name: runtimeInputs:
@@ -29,7 +22,7 @@ pkgs.symlinkJoin {
   name = "foolfad-transports";
   paths = [
     (mkAdapter "foolfad-ssh" [ pkgs.openssh ])
-    # tailscale ssh execs the system ssh, so openssh is required alongside it.
+    # tailscale ssh execs the system ssh, so openssh is needed too.
     (mkAdapter "foolfad-tailscale" [ tailscale-lite pkgs.openssh ])
     (mkAdapter "foolfad-fly" [ pkgs.flyctl ])
   ];

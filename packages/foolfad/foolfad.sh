@@ -240,9 +240,7 @@ fi
 
 FOOLFAD_REPO_PATH="${FOOLFAD_REPO_PATH:-$(repo_path_from_url "${REPO_URL}")}"
 
-# Resolve the transport: an explicit --transport flag wins, otherwise FOOLFAD_TRANSPORT.
-# foolfad is transport-agnostic; the transport string names whatever command reaches the
-# machine (e.g. foolfad-ssh, foolfad-tailscale, foolfad-fly), and foolfad never defaults it.
+# Transport: --transport flag, else FOOLFAD_TRANSPORT. No default — foolfad is provider-agnostic.
 FOOLFAD_TRANSPORT="${TRANSPORT_OVERRIDE:-${FOOLFAD_TRANSPORT:-}}"
 [[ -n "${FOOLFAD_TRANSPORT}" ]] \
   || die "no transport configured: set FOOLFAD_TRANSPORT (e.g. 'foolfad-ssh box.lab') or pass --transport"
