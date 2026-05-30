@@ -56,22 +56,43 @@ Deploy from the config file as shown. Don't use the image-only mode — it write
 that leaves out the `/data` volume, and the machine would lose everything every time it restarts.
 
 ## 6. Give the machine access to GitHub (do this before any hand-off)
-foolfad sends work by pushing it to the project's git remote; the machine then fetches that
+foolfad sends work by pushing it to the project's git remote; the machine then clones/fetches that
 branch, does the work, and (on the open-ended path) pushes the results back. So the machine needs
-git set up with credentials that can read and write the user's repos, plus a name and email to
-attach to its commits:
+git credentials that can read and write the user's repos, plus a name and email for its commits.
+**Cloning a private repo fails without this**, so set it up before the first hand-off.
 
-- Give it a GitHub token for the repos that'll be handed off (a fine-grained token with contents
-  read/write, or a per-repo deploy key). Store it as a machine secret, never in a project:
-  `npx @cardelli/ambit secrets set <machine>.<network> GITHUB_TOKEN=<token>`.
-- On the machine itself, set git up to use that token and give it an identity. Get into the
-  machine's shell over Tailscale SSH to `<machine>.<network>`, or Fly SSH using the Fly app name
-  from step 7. Set a credential helper that hands the token to github.com, and set
-  `git config --global user.name` and `user.email` so its commits are attributed. (A deploy key
-  is the alternative: add the public key to the repo and put the private key in the machine's SSH
-  config.)
-- Check it works: from the machine, fetch the target repo, push to a throwaway branch, confirm it
-  worked, then delete that branch.
+You don't need a separate shell for this — run it over the same transport foolfad will use. That's
+the command you'll save as `FOOLFAD_TRANSPORT` in step 7; you can use the adapter directly now, e.g.
+`foolfad-tailscale <machine>.<network>` (or `foolfad-fly --app <app> --machine <machine-id>`).
+
+- **Token.** Use a fine-grained GitHub token with contents read/write for the repos that'll be
+  handed off. On Fly, keep it out of band in the machine's secret store so it survives restarts and
+  never touches your shell history — it arrives on the machine as `$GITHUB_TOKEN`:
+  `npx @cardelli/ambit secrets set <machine>.<network> GITHUB_TOKEN=<token>`. (A hand-rolled box has
+  no ambit; deliver the token to the machine some other safe way and reference it below.)
+- **Wire git to use it, over the transport.** A single-quoted heredoc keeps `$GITHUB_TOKEN`
+  unexpanded locally — it's expanded on the machine, where ambit put it. With gh (it sets up git's
+  credential helper for you):
+
+  ```bash
+  cat <<'EOF' | foolfad-tailscale <machine>.<network>
+  printf '%s' "$GITHUB_TOKEN" | gh auth login --with-token
+  gh auth setup-git
+  git config --global user.name  "offload runner"
+  git config --global user.email "offload@<machine>.<network>"
+  EOF
+  ```
+
+  If gh isn't on the machine, use plain git instead: `git config --global credential.helper store`
+  and write `https://x-access-token:$GITHUB_TOKEN@github.com` into `~/.git-credentials` (mode 600).
+  A deploy key is another alternative: add the public key to the repo, put the private key in the
+  machine's SSH config.
+- **Check it works**, again over the transport: clone or fetch the target repo, push to a throwaway
+  branch, confirm, then delete it.
+
+These credentials must land on the part of the disk that survives restarts (the provisioned image
+keeps HOME/config on `/data`; a hand-rolled box must arrange the same), or you'll redo this after
+every restart.
 
 ## 7. Save the settings foolfad needs
 foolfad reaches the machine through a **transport** — a command that runs work on the remote. You

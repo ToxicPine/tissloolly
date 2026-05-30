@@ -7,42 +7,42 @@ doesn't need this; only the open-ended, "let it work toward a goal" path does.
 
 This is also how the user can **check in on a run and steer it** while it's going.
 
-## Getting into the machine
-
-To sign Codex in, you need a shell on the machine. Two ways in, both reach the same place:
-
-- Over the private network the machine lives on: `ssh <machine>.<network>` (for example
-  `ssh box.lab`). This works from the user's own devices — the ones joined to that network — the
-  same ones that can open its web links, and it works whatever the machine is hosted on.
-- Or, if it's a provisioned Fly machine, through Fly's own shell using the app name from the
-  provisioning steps. (See `references/provision-remote-machine.md` for how to get that name.)
-
-`<machine>.<network>` is the address this skill reported when it sent work off.
-
 ## Signing Codex in (one time, with a device code)
 
-A normal sign-in opens a browser on the same computer — but the machine has no browser, so use the
-**device-code** way instead. It's built for exactly this: signing in on a computer you're reaching
-remotely.
+You already have a way to run things on the machine: the transport foolfad uses
+(`FOOLFAD_TRANSPORT`). Signing Codex in is just one more command run over it — no separate shell to
+set up. A normal sign-in would open a browser on the machine, but the machine has no browser, so use
+the **device-code** flow, which is built for signing in to a computer you're reaching remotely.
 
-On the machine, run:
+Run it straight through the transport:
 
 ```bash
-codex login --device-auth
+echo 'codex login --device-auth' | $FOOLFAD_TRANSPORT
 ```
 
-It prints two things:
+Codex prints two things, and they stream back to you:
 
 1. A link to open in a browser.
 2. A short one-time code (it expires in about 15 minutes).
 
 The user opens that link on their *own* phone or laptop, signs in to their ChatGPT account, and
-enters the code. Codex on the machine then finishes signing in on its own. Treat that code like a
-password while it's valid — don't share it or paste it anywhere except that sign-in page.
+enters the code. Codex on the machine finishes signing in on its own and the command returns. Treat
+that code like a password while it's valid — don't share it or paste it anywhere except that sign-in
+page.
 
-That's it — the sign-in is saved on the machine's own disk, the part that survives restarts, so
-this is a one-time thing. (If the user signs in with an API key instead of a ChatGPT account, the
-equivalent is `codex login --api-key <key>`.)
+That's it — the sign-in is saved on the machine's own disk, the part that survives restarts, so this
+is a one-time thing. (For an API key instead of a ChatGPT account:
+`echo 'codex login --api-key <key>' | $FOOLFAD_TRANSPORT`.)
+
+The transport runs without a terminal, which is fine for device-auth — there's nothing to type on
+this end. If the code doesn't stream back, or Codex complains that it needs a terminal, fall back to
+an interactive shell and run `codex login --device-auth` there directly:
+
+- ssh / tailscale transports: `ssh <machine>.<network>` (for example `ssh box.lab`) — works from the
+  user's own devices on that network, whatever the machine is hosted on.
+- fly transport: `fly ssh console --app <app> --machine <machine-id>`.
+
+`<machine>.<network>` is the address this skill reported when it sent work off.
 
 After signing in, open-ended hand-offs will work:
 
