@@ -42,7 +42,7 @@ Take `/tmp/hambit/fly.toml` and write a copy to `/tmp/offload-fly.toml` with two
 - Add a build section that pins the ready-made image:
 
       [build]
-        image = "cardelli/container-agent:latest-opinionated"
+        image = "cardellier/container-agent:latest-opinionated"
 
 - Set its `HOSTNAME` to the `<machine>.<network>` name from step 2.
 
