@@ -20,6 +20,7 @@ let
         ".cursor/skills"
         ".agents/skills"
         ".claude/skills"
+        ".hermes/skills"
       ]
     }:
     let
