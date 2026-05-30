@@ -29,9 +29,9 @@ dev server at localhost:8000/a?x=1    ->  http://<machine>.<network>/8000/a?x=1
 reported back, e.g. `box.lab`). Refresh, links, back/forward, and live connections (websockets)
 all work through it, so it behaves like the real dev server.
 
-If you're not sure of the exact URL, the agent on the other computer can build it for you — that's
-what its `nestail-service-urls` and `foolfad-target` skills are for. It knows the machine's address
-and which port the server is on.
+If you're not sure of the exact URL, the agent running on the other computer can work it out for
+you: its `nestail-service-urls` skill turns a port into the right link, and `foolfad-target` can
+tell you which port your run is listening on.
 
 ## "I opened the address and nothing loads."
 
@@ -61,9 +61,30 @@ machine's own hostname.
 No. The machine sits on a private network that only the user's own devices can reach, so the
 `http://<machine>.<network>/...` links work for them and no one else. They're not public URLs.
 
+## "Can I point this at my own server instead of Fly?"
+
+Yes. foolfad reaches the machine through a transport command, and you set which one with
+`FOOLFAD_TRANSPORT` — `foolfad-tailscale <host>`, `foolfad-ssh <host>`, or
+`foolfad-fly --app … --machine …`. So any box you can reach over SSH (or Tailscale SSH) can be the
+target; just set the transport to point at it.
+
+One caveat for a hand-rolled box (one you set up yourself rather than through the provisioning
+doc): the convenient parts the provisioned image gives you for free aren't automatic. The box needs
+a writable home directory that survives restarts. By default foolfad keeps repos under
+`~/.remote-work`, with `.bare` beside branch-named worktree directories. The box also needs git set
+up with credentials that can read and write the user's repos, and — if you want the open-ended
+`boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and Codex signed in on the
+machine. Fixed-command hand-offs (`foolfad -- <command>`) only need persistent home storage and git;
+the rest is just for the open-ended path. The web proxy and the `http://<machine>.<network>/<port>/` links
+above come from the provisioned setup too, so a bare SSH box won't have them unless you add one.
+
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 
 That's a different question from viewing a web page, and it's handled by other skills:
 `foolfad-target` for the state of a handed-off run on the machine, and `boondoggle-runs` for an
-open-ended (coding-assistant) run's progress and when it finishes. The finished result comes back
-as the branch this skill reported.
+open-ended (coding-assistant) run's progress and when it finishes.
+
+Those are target-side skills. If the user is already talking to an agent on the machine, for
+example through Telegram, that agent should use them directly. If you only have the local machine,
+use the saved `FOOLFAD_TRANSPORT` to ask the target-side agent/Codex to answer from over there and
+print the result back locally. The finished code still comes back as the branch this skill reported.

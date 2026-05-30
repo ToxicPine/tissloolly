@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly FOOLFAD_DEFAULT_USER="user"
-
 new_run_id() {
   local timestamp
 
@@ -23,29 +21,42 @@ usage() {
   cat <<'USAGE'
 Usage: foolfad [options] -- COMMAND [ARG...]
 
-Launch a command in a worktree for the git repo containing $PWD.
+Launch a command in a worktree for the git repo containing $PWD, on a remote
+machine reached through a transport command.
 
 Options:
   --command COMMAND               Shell command to run from the worktree.
+  --transport TRANSPORT           Command that runs the work on the remote.
 
 Provide a command with --command, FOOLFAD_COMMAND, or -- COMMAND [ARG...].
+
+The transport is a single command string whose job is to take a script on its
+stdin, run it under "bash -s" on the remote machine, and forward stdout/stderr
+and the exit status. The adapters foolfad-ssh, foolfad-tailscale and foolfad-fly
+provide this; you can also point it at anything else (e.g. kubectl exec).
+
+Set it with --transport or FOOLFAD_TRANSPORT, for example:
+  FOOLFAD_TRANSPORT='foolfad-ssh box.lab'
+  FOOLFAD_TRANSPORT='foolfad-tailscale box.lab'
+  FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'
 
 Examples:
   foolfad -- npm run dev
   foolfad -- bash scripts/start.sh --port 3000
   foolfad --command 'npm run dev'
+  foolfad --transport 'foolfad-ssh box.lab' -- npm run dev
 
 Other useful env overrides:
   FOOLFAD_REPO_ROOT, FOOLFAD_REPO_URL, FOOLFAD_REMOTE_NAME, FOOLFAD_REPO_PATH,
-  FOOLFAD_APP, FOOLFAD_MACHINE_ID, FOOLFAD_USER, FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME, 
-  FOOLFAD_RUN_BRANCH, FOOLFAD_BASE_BRANCH, FOOLFAD_WITH_RUNNERS_DIR, 
-  FOOLFAD_REMOTE_DIR, FOOLFAD_BARE_DIR, FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND, 
-  FOOLFAD_CONFIG
+  FOOLFAD_TRANSPORT, FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME, FOOLFAD_RUN_BRANCH,
+  FOOLFAD_BASE_BRANCH, FOOLFAD_REMOTE_ROOT, FOOLFAD_REMOTE_DIR,
+  FOOLFAD_BARE_DIR, FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND
 USAGE
 }
 
 COMMAND_MODE=
 RUN_COMMAND=()
+TRANSPORT_OVERRIDE=
 
 if [[ -n "${FOOLFAD_COMMAND:-}" ]]; then
   COMMAND_MODE=shell
@@ -63,6 +74,15 @@ while [[ $# -gt 0 ]]; do
     --command=*)
       COMMAND_MODE=shell
       RUN_COMMAND=("${1#*=}")
+      shift
+      ;;
+    --transport)
+      [[ $# -ge 2 ]] || die "--transport requires a value"
+      TRANSPORT_OVERRIDE="$2"
+      shift 2
+      ;;
+    --transport=*)
+      TRANSPORT_OVERRIDE="${1#*=}"
       shift
       ;;
     --)
@@ -83,11 +103,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ ${#RUN_COMMAND[@]} -gt 0 && -n "${RUN_COMMAND[0]}" ]] || die "command must not be empty"
-
-if ! command -v fly >/dev/null 2>&1; then
-  echo "fly CLI required" >&2
-  exit 1
-fi
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git required" >&2
@@ -209,6 +224,10 @@ shell_quote_command() {
   printf "\n"
 }
 
+default_worktree_name() {
+  sanitize_path_segment "$1"
+}
+
 REPO_ROOT="${FOOLFAD_REPO_ROOT:-$(git rev-parse --show-toplevel 2>/dev/null || true)}"
 [[ -n "${REPO_ROOT}" ]] || die "run this from inside a git repository"
 cd "${REPO_ROOT}"
@@ -221,24 +240,25 @@ if [[ -z "${REPO_URL}" ]]; then
 fi
 
 FOOLFAD_REPO_PATH="${FOOLFAD_REPO_PATH:-$(repo_path_from_url "${REPO_URL}")}"
-FOOLFAD_APP="${FOOLFAD_APP:-}"
-[[ -n "${FOOLFAD_APP}" ]] || die "set FOOLFAD_APP"
 
-FOOLFAD_MACHINE_ID="${FOOLFAD_MACHINE_ID:-}"
-[[ -n "${FOOLFAD_MACHINE_ID}" ]] || die "set FOOLFAD_MACHINE_ID"
+# Transport: --transport flag, else FOOLFAD_TRANSPORT. No default — foolfad is provider-agnostic.
+FOOLFAD_TRANSPORT="${TRANSPORT_OVERRIDE:-${FOOLFAD_TRANSPORT:-}}"
+[[ -n "${FOOLFAD_TRANSPORT}" ]] \
+  || die "no transport configured: set FOOLFAD_TRANSPORT (e.g. 'foolfad-ssh box.lab') or pass --transport"
 
-FOOLFAD_USER="${FOOLFAD_USER:-${USER:-${FOOLFAD_DEFAULT_USER}}}"
-FOOLFAD_USER="$(sanitize_path_segment "${FOOLFAD_USER}")"
+TRANSPORT_BIN="${FOOLFAD_TRANSPORT%% *}"
+command -v "${TRANSPORT_BIN}" >/dev/null 2>&1 \
+  || die "transport command '${TRANSPORT_BIN}' not found on PATH (from FOOLFAD_TRANSPORT='${FOOLFAD_TRANSPORT}')"
+
 FOOLFAD_RUN_ID="${FOOLFAD_RUN_ID:-$(new_run_id)}"
 FOOLFAD_RUN_ID="$(sanitize_path_segment "${FOOLFAD_RUN_ID}")"
-FOOLFAD_WORKTREE_NAME="${FOOLFAD_WORKTREE_NAME:-${FOOLFAD_USER}/${FOOLFAD_RUN_ID}}"
-FOOLFAD_RUN_BRANCH="${FOOLFAD_RUN_BRANCH:-foolfad/${FOOLFAD_USER}/${FOOLFAD_RUN_ID}}"
+FOOLFAD_RUN_BRANCH="${FOOLFAD_RUN_BRANCH:-foolfad/${FOOLFAD_RUN_ID}}"
+FOOLFAD_WORKTREE_NAME="${FOOLFAD_WORKTREE_NAME:-$(default_worktree_name "${FOOLFAD_RUN_BRANCH}")}"
 FOOLFAD_BASE_BRANCH="${FOOLFAD_BASE_BRANCH:-$(git symbolic-ref --quiet --short HEAD 2>/dev/null || printf 'main')}"
-FOOLFAD_WITH_RUNNERS_DIR="${FOOLFAD_WITH_RUNNERS_DIR:-/data/with-runners}"
-FOOLFAD_REMOTE_DIR="${FOOLFAD_REMOTE_DIR:-${FOOLFAD_WITH_RUNNERS_DIR}/repos/${FOOLFAD_REPO_PATH}}"
-FOOLFAD_BARE_DIR="${FOOLFAD_BARE_DIR:-${FOOLFAD_REMOTE_DIR}/repo.git}"
-FOOLFAD_WORKTREE_DIR="${FOOLFAD_WORKTREE_DIR:-${FOOLFAD_REMOTE_DIR}/worktrees/${FOOLFAD_WORKTREE_NAME}}"
-FOOLFAD_CONFIG="${FOOLFAD_CONFIG:-${FOOLFAD_REMOTE_DIR}/foolfad.env}"
+FOOLFAD_REMOTE_ROOT="${FOOLFAD_REMOTE_ROOT:-}"
+FOOLFAD_REMOTE_DIR="${FOOLFAD_REMOTE_DIR:-}"
+FOOLFAD_BARE_DIR="${FOOLFAD_BARE_DIR:-}"
+FOOLFAD_WORKTREE_DIR="${FOOLFAD_WORKTREE_DIR:-}"
 
 if [[ "${COMMAND_MODE}" == "shell" ]]; then
   COMMAND_STRING="${RUN_COMMAND[0]}"
@@ -253,48 +273,52 @@ fi
 
 git push "${REPO_URL}" "HEAD:${FOOLFAD_RUN_BRANCH}"
 
-FOOLFAD_BARE_DIR_Q="$(shell_quote_word "${FOOLFAD_BARE_DIR}")"
 FOOLFAD_BASE_BRANCH_Q="$(shell_quote_word "${FOOLFAD_BASE_BRANCH}")"
-FOOLFAD_CONFIG_Q="$(shell_quote_word "${FOOLFAD_CONFIG}")"
+FOOLFAD_BARE_DIR_Q="$(shell_quote_word "${FOOLFAD_BARE_DIR}")"
 FOOLFAD_REMOTE_DIR_Q="$(shell_quote_word "${FOOLFAD_REMOTE_DIR}")"
+FOOLFAD_REMOTE_ROOT_Q="$(shell_quote_word "${FOOLFAD_REMOTE_ROOT}")"
 FOOLFAD_REPO_PATH_Q="$(shell_quote_word "${FOOLFAD_REPO_PATH}")"
 FOOLFAD_RUN_BRANCH_Q="$(shell_quote_word "${FOOLFAD_RUN_BRANCH}")"
+FOOLFAD_WORKTREE_NAME_Q="$(shell_quote_word "${FOOLFAD_WORKTREE_NAME}")"
 FOOLFAD_WORKTREE_DIR_Q="$(shell_quote_word "${FOOLFAD_WORKTREE_DIR}")"
-FOOLFAD_WORKTREE_PARENT_Q="$(shell_quote_word "$(dirname "${FOOLFAD_WORKTREE_DIR}")")"
 COMMAND_STRING_Q="$(shell_quote_word "${COMMAND_STRING}")"
 REPO_URL_Q="$(shell_quote_word "${REPO_URL}")"
 
 REMOTE_SCRIPT=$(cat <<SCRIPT
 set -euo pipefail
-mkdir -p ${FOOLFAD_REMOTE_DIR_Q}
-if [ ! -d ${FOOLFAD_BARE_DIR_Q} ]; then
-  git clone --bare ${REPO_URL_Q} ${FOOLFAD_BARE_DIR_Q}
+REPO_URL=${REPO_URL_Q}
+FOOLFAD_REPO_PATH=${FOOLFAD_REPO_PATH_Q}
+FOOLFAD_REMOTE_ROOT=${FOOLFAD_REMOTE_ROOT_Q}
+FOOLFAD_REMOTE_DIR=${FOOLFAD_REMOTE_DIR_Q}
+FOOLFAD_BARE_DIR=${FOOLFAD_BARE_DIR_Q}
+FOOLFAD_WORKTREE_NAME=${FOOLFAD_WORKTREE_NAME_Q}
+FOOLFAD_WORKTREE_DIR=${FOOLFAD_WORKTREE_DIR_Q}
+FOOLFAD_RUN_BRANCH=${FOOLFAD_RUN_BRANCH_Q}
+FOOLFAD_BASE_BRANCH=${FOOLFAD_BASE_BRANCH_Q}
+COMMAND_STRING=${COMMAND_STRING_Q}
+
+: "\${FOOLFAD_REMOTE_ROOT:="\${HOME}/.remote-work"}"
+: "\${FOOLFAD_REMOTE_DIR:="\${FOOLFAD_REMOTE_ROOT}/repos/\${FOOLFAD_REPO_PATH}"}"
+: "\${FOOLFAD_BARE_DIR:="\${FOOLFAD_REMOTE_DIR}/.bare"}"
+: "\${FOOLFAD_WORKTREE_DIR:="\${FOOLFAD_REMOTE_DIR}/\${FOOLFAD_WORKTREE_NAME}"}"
+
+mkdir -p "\${FOOLFAD_REMOTE_DIR}"
+if [ ! -d "\${FOOLFAD_BARE_DIR}" ]; then
+  git clone --bare "\${REPO_URL}" "\${FOOLFAD_BARE_DIR}"
 fi
-git -C ${FOOLFAD_BARE_DIR_Q} fetch ${REPO_URL_Q} '+refs/heads/*:refs/heads/*'
-mkdir -p ${FOOLFAD_WORKTREE_PARENT_Q}
-if [ -d ${FOOLFAD_WORKTREE_DIR_Q}/.git ] || [ -f ${FOOLFAD_WORKTREE_DIR_Q}/.git ]; then
-  git -C ${FOOLFAD_WORKTREE_DIR_Q} fetch origin
-  git -C ${FOOLFAD_WORKTREE_DIR_Q} checkout ${FOOLFAD_RUN_BRANCH_Q}
-  git -C ${FOOLFAD_WORKTREE_DIR_Q} reset --hard ${FOOLFAD_RUN_BRANCH_Q}
+git -C "\${FOOLFAD_BARE_DIR}" fetch "\${REPO_URL}" '+refs/heads/*:refs/heads/*'
+mkdir -p "\$(dirname "\${FOOLFAD_WORKTREE_DIR}")"
+if [ -d "\${FOOLFAD_WORKTREE_DIR}/.git" ] || [ -f "\${FOOLFAD_WORKTREE_DIR}/.git" ]; then
+  git -C "\${FOOLFAD_WORKTREE_DIR}" fetch origin
+  git -C "\${FOOLFAD_WORKTREE_DIR}" checkout "\${FOOLFAD_RUN_BRANCH}"
+  git -C "\${FOOLFAD_WORKTREE_DIR}" reset --hard "\${FOOLFAD_RUN_BRANCH}"
 else
-  rm -rf ${FOOLFAD_WORKTREE_DIR_Q}
-  git -C ${FOOLFAD_BARE_DIR_Q} worktree add ${FOOLFAD_WORKTREE_DIR_Q} ${FOOLFAD_RUN_BRANCH_Q}
+  rm -rf "\${FOOLFAD_WORKTREE_DIR}"
+  git -C "\${FOOLFAD_BARE_DIR}" worktree add "\${FOOLFAD_WORKTREE_DIR}" "\${FOOLFAD_RUN_BRANCH}"
 fi
-cat > ${FOOLFAD_CONFIG_Q} <<'EOF'
-export FOOLFAD_REPO_URL=${REPO_URL_Q}
-export FOOLFAD_REPO_PATH=${FOOLFAD_REPO_PATH_Q}
-export FOOLFAD_REMOTE_DIR=${FOOLFAD_REMOTE_DIR_Q}
-export FOOLFAD_BARE_DIR=${FOOLFAD_BARE_DIR_Q}
-export FOOLFAD_WORKTREE_DIR=${FOOLFAD_WORKTREE_DIR_Q}
-export FOOLFAD_RUN_BRANCH=${FOOLFAD_RUN_BRANCH_Q}
-export FOOLFAD_BASE_BRANCH=${FOOLFAD_BASE_BRANCH_Q}
-EOF
-cd ${FOOLFAD_WORKTREE_DIR_Q}
-exec bash -lc ${COMMAND_STRING_Q}
+cd "\${FOOLFAD_WORKTREE_DIR}"
+exec bash -lc "\${COMMAND_STRING}"
 SCRIPT
 )
 
-printf '%s\n' "${REMOTE_SCRIPT}" | fly ssh console \
-  --app "${FOOLFAD_APP}" \
-  --machine "${FOOLFAD_MACHINE_ID}" \
-  --command "bash -s"
+printf '%s\n' "${REMOTE_SCRIPT}" | bash -c "${FOOLFAD_TRANSPORT}"

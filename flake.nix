@@ -47,6 +47,7 @@
           prasskitte = pkgs.callPackage ./packages/prasskitte { };
           boondoggle = pkgs.callPackage ./packages/boondoggle { };
           foolfad = pkgs.callPackage ./packages/foolfad { };
+          foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { };
           ghwc = pkgs.callPackage ./packages/ghwc { };
           ghwrc = pkgs.callPackage ./packages/ghwrc { };
           vusperize = pkgs.callPackage ./packages/vusperize { };

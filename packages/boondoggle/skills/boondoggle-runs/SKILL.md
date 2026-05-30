@@ -10,8 +10,8 @@ Use this skill when the user asks about a boondoggle or a Codex goal run launche
 Boondoggle runs a Codex goal from a prompt on stdin. It is often launched through Foolfad, so the worktree and branch may follow the Foolfad layout:
 
 ```text
-/data/with-runners/repos/<repo-path>/worktrees/<user>/<run-id>
-foolfad/<user>/<run-id>
+~/.remote-work/repos/<repo-path>/foolfad-<run-id>
+foolfad/<run-id>
 ```
 
 ## Activity Signals
@@ -20,7 +20,7 @@ foolfad/<user>/<run-id>
 Useful local checks:
 
 ```bash
-worktree="/data/with-runners/repos/gh/OWNER/REPO/worktrees/user/run-id"
+worktree="${HOME}/.remote-work/repos/gh/OWNER/REPO/foolfad-run-id"
 pgrep -af 'boondoggle|codex app-server|codex' || true
 ps -eo pid,ppid,etime,stat,cmd --sort=etime | rg -F "$worktree" || true
 ps -eo pid,ppid,etime,stat,cmd --sort=etime | rg 'boondoggle|codex app-server' || true
@@ -55,4 +55,5 @@ Tell the user what you can verify:
 - Latest Boondoggle status commit if present.
 - Recent file activity.
 
-If there is no pidfile, say there is no pidfile for this current runner instead of implying one is missing.
+Boondoggle tracks runs through git commits and live processes, not pidfiles, so report what those
+show rather than looking for a status or pid file.
