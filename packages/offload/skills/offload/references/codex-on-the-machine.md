@@ -13,9 +13,9 @@ To sign Codex in, you need a shell on the machine. Two ways in, both reach the s
 
 - Over the private network the machine lives on: `ssh <machine>.<network>` (for example
   `ssh box.lab`). This works from the user's own devices — the ones joined to that network — the
-  same ones that can open its web links.
-- Or through the hosting service's own shell, using the app name from the provisioning steps. (See
-  `references/provision-remote-machine.md` for how to get that name.)
+  same ones that can open its web links, and it works whatever the machine is hosted on.
+- Or, if it's a provisioned Fly machine, through Fly's own shell using the app name from the
+  provisioning steps. (See `references/provision-remote-machine.md` for how to get that name.)
 
 `<machine>.<network>` is the address this skill reported when it sent work off.
 

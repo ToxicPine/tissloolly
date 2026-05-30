@@ -76,8 +76,9 @@ any secret the devShell can't provide must not travel as plaintext; offer to enc
 - Open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. Codex works until done
   and pushes the result back as a branch. Requires Codex signed in (`references/codex-on-the-machine.md`).
 
-foolfad enters the project on the machine itself, so the environment loads on its own. For long jobs
-or progress pings, wrap the remote command with vusperize.
+The work starts already inside the project directory over there, so its environment (the devShell,
+`.envrc`) loads on its own — you don't need to wrap a `cd` or `nix develop` around it. For long jobs
+or progress pings, wrap the command with vusperize, which runs alongside it on the machine.
 
 **Report back:** the branch the work lands on, the machine and its address
 (`http://<machine>.<network>`), and that the user can check progress later with the foolfad-target

@@ -29,9 +29,9 @@ dev server at localhost:8000/a?x=1    ->  http://<machine>.<network>/8000/a?x=1
 reported back, e.g. `box.lab`). Refresh, links, back/forward, and live connections (websockets)
 all work through it, so it behaves like the real dev server.
 
-If you're not sure of the exact URL, the agent on the other computer can build it for you — that's
-what its `nestail-service-urls` and `foolfad-target` skills are for. It knows the machine's address
-and which port the server is on.
+If you're not sure of the exact URL, the agent running on the other computer can work it out for
+you: its `nestail-service-urls` skill turns a port into the right link, and `foolfad-target` can
+tell you which port your run is listening on.
 
 ## "I opened the address and nothing loads."
 

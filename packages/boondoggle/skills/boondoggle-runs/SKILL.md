@@ -55,4 +55,5 @@ Tell the user what you can verify:
 - Latest Boondoggle status commit if present.
 - Recent file activity.
 
-If there is no pidfile, say there is no pidfile for this current runner instead of implying one is missing.
+Boondoggle tracks runs through git commits and live processes, not pidfiles, so report what those
+show rather than looking for a status or pid file.
