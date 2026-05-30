@@ -14,6 +14,11 @@ You already have a way to run things on the machine: the transport foolfad uses
 set up. A normal sign-in would open a browser on the machine, but the machine has no browser, so use
 the **device-code** flow, which is built for signing in to a computer you're reaching remotely.
 
+One prerequisite: device-code login has to be allowed on the account first — in ChatGPT,
+**Settings → Security → "Allow device code login"** (on a workspace account, a workspace admin has to
+enable it). Without it, the command fails with a message telling the user to ask their workspace
+admin to enable device code authentication.
+
 Run it straight through the transport:
 
 ```bash
@@ -31,8 +36,16 @@ that code like a password while it's valid — don't share it or paste it anywhe
 page.
 
 That's it — the sign-in is saved on the machine's own disk, the part that survives restarts, so this
-is a one-time thing. (For an API key instead of a ChatGPT account:
-`echo 'codex login --api-key <key>' | $FOOLFAD_TRANSPORT`.)
+is a one-time thing.
+
+To use an API key instead of a ChatGPT account, don't pass the key on the command line — Codex reads
+it from stdin via `codex login --with-api-key`. Put the key in the machine's environment as
+`OPENAI_API_KEY` (the same way as the GitHub token, e.g. `ambit secrets set`), then feed it in over
+the transport so the key only ever exists on the machine:
+
+```bash
+echo 'printenv OPENAI_API_KEY | codex login --with-api-key' | $FOOLFAD_TRANSPORT
+```
 
 The transport runs without a terminal, which is fine for device-auth — there's nothing to type on
 this end. If the code doesn't stream back, or Codex complains that it needs a terminal, fall back to
