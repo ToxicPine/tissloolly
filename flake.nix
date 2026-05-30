@@ -24,6 +24,10 @@
           skillsPath = ./packages/foolfad/skills;
         }
         {
+          name = "offload";
+          skillsPath = ./packages/offload/skills;
+        }
+        {
           name = "ghwc";
           skillsPath = ./packages/ghwc/skills;
         }
