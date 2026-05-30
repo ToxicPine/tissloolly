@@ -93,3 +93,9 @@ remote command with vusperize.
 **Then tell the user, plainly, what happened:** the branch the work will land on, which computer
 it's running on and its address (`http://<machine>.<network>`), and that they can check on it
 later using the foolfad-target or boondoggle-runs skills.
+
+## Common follow-up questions
+
+After the hand-off, people often ask how to view a dev server or web page running on the other
+computer, why an address won't load, or whether anyone else can see it. Answers to those are in
+`references/faq.md` — read it before answering.
