@@ -37,12 +37,7 @@ The machine's definition lives in a separate project. Read it straight off its b
 keeping your own copy:
 `git clone -q --branch opinionated --depth 1 https://github.com/ToxicPine/hermes-ambit /tmp/hambit`
 
-Take `/tmp/hambit/fly.toml` and write a copy to `/tmp/offload-fly.toml` with two changes:
-
-- Add a build section that pins the ready-made image:
-
-      [build]
-        image = "cardellier/container-agent:latest-opinionated"
+Take `/tmp/hambit/fly.toml` and write a copy to `/tmp/offload-fly.toml:
 
 - Set its `HOSTNAME` to the `<machine>.<network>` name from step 2.
 
