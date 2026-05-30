@@ -61,6 +61,22 @@ machine's own hostname.
 No. The machine sits on a private network that only the user's own devices can reach, so the
 `http://<machine>.<network>/...` links work for them and no one else. They're not public URLs.
 
+## "Can I point this at my own server instead of Fly?"
+
+Yes. foolfad reaches the machine through a transport command, and you set which one with
+`FOOLFAD_TRANSPORT` — `foolfad-tailscale <host>`, `foolfad-ssh <host>`, or
+`foolfad-fly --app … --machine …`. So any box you can reach over SSH (or Tailscale SSH) can be the
+target; just set the transport to point at it.
+
+One caveat for a hand-rolled box (one you set up yourself rather than through the provisioning
+doc): the convenient parts the provisioned image gives you for free aren't automatic. The box needs
+a writable `/data` directory that survives restarts (that's where repos and worktrees live), git
+set up with credentials that can read and write the user's repos, and — if you want the open-ended
+`boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and Codex signed in on the
+machine. Fixed-command hand-offs (`foolfad -- <command>`) only need `/data` and git; the rest is
+just for the open-ended path. The web proxy and the `http://<machine>.<network>/<port>/` links
+above come from the provisioned setup too, so a bare SSH box won't have them unless you add one.
+
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 
 That's a different question from viewing a web page, and it's handled by other skills:

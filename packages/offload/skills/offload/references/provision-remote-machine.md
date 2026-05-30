@@ -74,13 +74,23 @@ attach to its commits:
   worked, then delete that branch.
 
 ## 7. Save the settings foolfad needs
-foolfad finds the machine through environment variables:
+foolfad reaches the machine through a **transport** — a command that runs work on the remote. You
+choose how to connect:
 
-- `npx @cardelli/ambit status app <machine>.<network> --json` — note the Fly app name and the
-  machine id.
-- Set `FOOLFAD_APP` to the app name and `FOOLFAD_MACHINE_ID` to the machine id, and save them
-  somewhere the user's shells will pick them up (shell profile, direnv, or a secrets manager) so
-  none of this has to be done again.
+- **Tailscale SSH (recommended here):** the machine is already on the user's private Tailscale
+  network as `<machine>.<network>`, so set
+  `FOOLFAD_TRANSPORT='foolfad-tailscale <machine>.<network>'` (for example
+  `foolfad-tailscale box.lab`). Plain SSH works the same way with `foolfad-ssh <machine>.<network>`
+  if the user prefers, or for a machine reachable over regular SSH.
+- **Fly:** `npx @cardelli/ambit status app <machine>.<network> --json` — note the Fly app name and
+  the machine id, then set `FOOLFAD_TRANSPORT='foolfad-fly --app <app> --machine <machine-id>'`.
+  (Setting `FOOLFAD_APP` and `FOOLFAD_MACHINE_ID` instead also works — foolfad derives the same fly
+  transport from them — but `FOOLFAD_TRANSPORT` is the clearer, device-agnostic knob.)
+
+Whichever you pick, the named adapter (`foolfad-ssh`, `foolfad-tailscale`, `foolfad-fly`) must be on
+the user's `PATH`, and the setting must be saved somewhere their shells pick it up (shell profile,
+direnv, or a secrets manager) so none of this has to be done again.
+
 - If the project's git remote isn't the one the machine should pull from, also set
   `FOOLFAD_REPO_URL` (the URL to push to and clone from) and/or `FOOLFAD_REMOTE_NAME`.
   `FOOLFAD_USER` changes the user part of the run branch name if a different one is wanted.

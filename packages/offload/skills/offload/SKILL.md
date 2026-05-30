@@ -70,9 +70,11 @@ changing anything.
 **Make sure there's actually a computer to send the work to.** This is the key check, and it's
 where the user might get confused, so be clear about it:
 
-- First, look at the user's environment for `FOOLFAD_APP` and `FOOLFAD_MACHINE_ID`. If both are
-  set, a computer is already set up and pointed to — use it.
-- If they aren't set, say so plainly — something like: *"There's no machine listed in your
+- First, look at the user's environment for a transport. `FOOLFAD_TRANSPORT` set (e.g.
+  `foolfad-ssh box.lab`, `foolfad-tailscale box.lab`, or `foolfad-fly --app … --machine …`) means a
+  computer is already set up and pointed to — use it. `FOOLFAD_APP` and `FOOLFAD_MACHINE_ID` both
+  set is the older fly-only form and works too (foolfad derives a fly transport from them).
+- If none of those are set, say so plainly — something like: *"There's no machine listed in your
   environment to hand this off to. Let me check whether one exists that just isn't pointed to
   yet."* Then go look (see the provisioning doc for how to list what's out there).
 - If you still can't find one, don't bury it in jargon. Tell the user straight: *"I can't find a

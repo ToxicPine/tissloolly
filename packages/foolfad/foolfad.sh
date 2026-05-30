@@ -23,29 +23,45 @@ usage() {
   cat <<'USAGE'
 Usage: foolfad [options] -- COMMAND [ARG...]
 
-Launch a command in a worktree for the git repo containing $PWD.
+Launch a command in a worktree for the git repo containing $PWD, on a remote
+machine reached through a transport command.
 
 Options:
   --command COMMAND               Shell command to run from the worktree.
+  --transport TRANSPORT           Command that runs the work on the remote.
 
 Provide a command with --command, FOOLFAD_COMMAND, or -- COMMAND [ARG...].
+
+The transport is a single command string whose job is to take a script on its
+stdin, run it under "bash -s" on the remote machine, and forward stdout/stderr
+and the exit status. The adapters foolfad-ssh, foolfad-tailscale and foolfad-fly
+provide this; you can also point it at anything else (e.g. kubectl exec).
+
+Set it with --transport or FOOLFAD_TRANSPORT, for example:
+  FOOLFAD_TRANSPORT='foolfad-ssh box.lab'
+  FOOLFAD_TRANSPORT='foolfad-tailscale box.lab'
+  FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'
+If FOOLFAD_TRANSPORT is unset but FOOLFAD_APP and FOOLFAD_MACHINE_ID are set, a
+foolfad-fly transport is derived from them for backwards compatibility.
 
 Examples:
   foolfad -- npm run dev
   foolfad -- bash scripts/start.sh --port 3000
   foolfad --command 'npm run dev'
+  foolfad --transport 'foolfad-ssh box.lab' -- npm run dev
 
 Other useful env overrides:
   FOOLFAD_REPO_ROOT, FOOLFAD_REPO_URL, FOOLFAD_REMOTE_NAME, FOOLFAD_REPO_PATH,
-  FOOLFAD_APP, FOOLFAD_MACHINE_ID, FOOLFAD_USER, FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME, 
-  FOOLFAD_RUN_BRANCH, FOOLFAD_BASE_BRANCH, FOOLFAD_WITH_RUNNERS_DIR, 
-  FOOLFAD_REMOTE_DIR, FOOLFAD_BARE_DIR, FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND, 
-  FOOLFAD_CONFIG
+  FOOLFAD_TRANSPORT, FOOLFAD_APP, FOOLFAD_MACHINE_ID, FOOLFAD_USER,
+  FOOLFAD_RUN_ID, FOOLFAD_WORKTREE_NAME, FOOLFAD_RUN_BRANCH, FOOLFAD_BASE_BRANCH,
+  FOOLFAD_WITH_RUNNERS_DIR, FOOLFAD_REMOTE_DIR, FOOLFAD_BARE_DIR,
+  FOOLFAD_WORKTREE_DIR, FOOLFAD_COMMAND, FOOLFAD_CONFIG
 USAGE
 }
 
 COMMAND_MODE=
 RUN_COMMAND=()
+TRANSPORT_OVERRIDE=
 
 if [[ -n "${FOOLFAD_COMMAND:-}" ]]; then
   COMMAND_MODE=shell
@@ -63,6 +79,15 @@ while [[ $# -gt 0 ]]; do
     --command=*)
       COMMAND_MODE=shell
       RUN_COMMAND=("${1#*=}")
+      shift
+      ;;
+    --transport)
+      [[ $# -ge 2 ]] || die "--transport requires a value"
+      TRANSPORT_OVERRIDE="$2"
+      shift 2
+      ;;
+    --transport=*)
+      TRANSPORT_OVERRIDE="${1#*=}"
       shift
       ;;
     --)
@@ -83,11 +108,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ ${#RUN_COMMAND[@]} -gt 0 && -n "${RUN_COMMAND[0]}" ]] || die "command must not be empty"
-
-if ! command -v fly >/dev/null 2>&1; then
-  echo "fly CLI required" >&2
-  exit 1
-fi
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git required" >&2
@@ -222,10 +242,23 @@ fi
 
 FOOLFAD_REPO_PATH="${FOOLFAD_REPO_PATH:-$(repo_path_from_url "${REPO_URL}")}"
 FOOLFAD_APP="${FOOLFAD_APP:-}"
-[[ -n "${FOOLFAD_APP}" ]] || die "set FOOLFAD_APP"
-
 FOOLFAD_MACHINE_ID="${FOOLFAD_MACHINE_ID:-}"
-[[ -n "${FOOLFAD_MACHINE_ID}" ]] || die "set FOOLFAD_MACHINE_ID"
+
+# Resolve the transport: an explicit --transport flag wins, then FOOLFAD_TRANSPORT,
+# then a foolfad-fly transport derived from FOOLFAD_APP/FOOLFAD_MACHINE_ID so existing
+# fly setups keep working without any new configuration.
+FOOLFAD_TRANSPORT="${TRANSPORT_OVERRIDE:-${FOOLFAD_TRANSPORT:-}}"
+if [[ -z "${FOOLFAD_TRANSPORT}" ]]; then
+  if [[ -n "${FOOLFAD_APP}" && -n "${FOOLFAD_MACHINE_ID}" ]]; then
+    FOOLFAD_TRANSPORT="foolfad-fly --app $(shell_quote_word "${FOOLFAD_APP}") --machine $(shell_quote_word "${FOOLFAD_MACHINE_ID}")"
+  else
+    die "no transport configured: set FOOLFAD_TRANSPORT (e.g. 'foolfad-ssh box.lab'), pass --transport, or set FOOLFAD_APP and FOOLFAD_MACHINE_ID for the fly default"
+  fi
+fi
+
+TRANSPORT_BIN="${FOOLFAD_TRANSPORT%% *}"
+command -v "${TRANSPORT_BIN}" >/dev/null 2>&1 \
+  || die "transport command '${TRANSPORT_BIN}' not found on PATH (from FOOLFAD_TRANSPORT='${FOOLFAD_TRANSPORT}')"
 
 FOOLFAD_USER="${FOOLFAD_USER:-${USER:-${FOOLFAD_DEFAULT_USER}}}"
 FOOLFAD_USER="$(sanitize_path_segment "${FOOLFAD_USER}")"
@@ -294,7 +327,4 @@ exec bash -lc ${COMMAND_STRING_Q}
 SCRIPT
 )
 
-printf '%s\n' "${REMOTE_SCRIPT}" | fly ssh console \
-  --app "${FOOLFAD_APP}" \
-  --machine "${FOOLFAD_MACHINE_ID}" \
-  --command "bash -s"
+printf '%s\n' "${REMOTE_SCRIPT}" | bash -c "${FOOLFAD_TRANSPORT}"
