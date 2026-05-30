@@ -1,7 +1,7 @@
 # Setting up a computer to hand work off to
 
-Only do this when there's no computer set up yet — that is, when `FOOLFAD_APP` and
-`FOOLFAD_MACHINE_ID` are both unset and you couldn't find an existing one. It's a one-time setup.
+Only do this when there's no computer set up yet — that is, when `FOOLFAD_TRANSPORT` is unset and
+you couldn't find an existing machine. It's a one-time setup.
 It does three things: it rents a small private server, gives that server access to GitHub so it
 can fetch the user's work and send results back, and saves the few settings that let foolfad find
 it later.
