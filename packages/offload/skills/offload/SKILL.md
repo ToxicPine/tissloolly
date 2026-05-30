@@ -35,7 +35,9 @@ each one does:
   the goal is done, then saving and sending the result back as a branch. Use this (through
   foolfad) when the task is open-ended — "make this feature work" — rather than one exact command.
 - **vusperize** — wraps a command so it can send live progress pings to something like Telegram
-  while it runs. Optional, nice for long jobs or when the user wants updates.
+  while it runs. Optional, nice for long jobs or when the user wants updates. If the user wants
+  Telegram pings (or to chat with the agent on the machine from their phone) and that isn't set up
+  yet, it's a one-time setup — see `references/setup-telegram.md`.
 
 The "other computer" is a small server. It already has these three tools on it and a disk that
 keeps its files between restarts. Your project's own dependencies get rebuilt on it fresh. If no
@@ -88,7 +90,8 @@ where the user might get confused, so be clear about it:
 
 foolfad moves into the project on the other computer itself, so the environment loads on its own —
 you don't need to wrap anything to make that happen. For long jobs or progress pings, wrap the
-remote command with vusperize.
+remote command with vusperize. If the user wants those pings on Telegram and it's the first time,
+set it up using `references/setup-telegram.md`.
 
 **Then tell the user, plainly, what happened:** the branch the work will land on, which computer
 it's running on and its address (`http://<machine>.<network>`), and that they can check on it
