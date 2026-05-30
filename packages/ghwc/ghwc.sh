@@ -8,14 +8,15 @@ die() {
 
 usage() {
   cat <<'USAGE'
-Usage: ghwc [options] REPO [WORKTREE]
+Usage: ghwc [options] REPO [BRANCH]
 
-Create or reuse a shared bare GitHub clone and add a git worktree from it.
+Create or reuse a canonical-cased shared bare GitHub clone and add a branch-named worktree.
 
 Examples:
   ghwc cli/cli
-  ghwc cli/cli feature-x -b feature-x
-  ghwc https://github.com/cli/cli.git cli-main --filter=blob:none
+  ghwc cli/cli feature-x
+  ghwc cli/cli feature-x -B feature-x
+  ghwc https://github.com/cli/cli.git main --filter=blob:none
 
 Options:
   -r, --root DIR                  Root for repos (default: $GHWC_ROOT or ~/with-runners)
@@ -138,16 +139,16 @@ repo_path_from_repo() {
   printf 'git/%s\n' "${name_segment}"
 }
 
-default_worktree_name() {
+canonical_repo() {
   local repo="$1"
-  local name
+  local canonical
 
-  name="${repo%/}"
-  name="${name%%\?*}"
-  name="${name%%#*}"
-  name="${name##*/}"
-  name="${name%.git}"
-  sanitize_path_segment "${name}"
+  canonical="$(gh repo view "${repo}" --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
+  if [[ -n "${canonical}" && "${canonical}" == */* ]]; then
+    printf '%s\n' "${canonical}"
+  else
+    printf '%s\n' "${repo}"
+  fi
 }
 
 need_value() {
@@ -168,6 +169,8 @@ GH_CLONE_FLAGS=()
 CLONE_FLAGS=()
 FETCH_FLAGS=(--prune --quiet)
 REPO=""
+BRANCH_ARG=""
+BRANCH_NAME=""
 WORKTREE_NAME=""
 
 while [[ $# -gt 0 ]]; do
@@ -217,12 +220,14 @@ while [[ $# -gt 0 ]]; do
       [[ "${#BRANCH_MODE[@]}" -eq 0 ]] || die "only one of --branch, --reset-branch, --detach, or --orphan may be used"
       BRANCH_MODE=(-b "$2")
       BRANCH_KIND="branch"
+      BRANCH_NAME="$2"
       shift 2
       ;;
     --branch=*)
       [[ "${#BRANCH_MODE[@]}" -eq 0 ]] || die "only one of --branch, --reset-branch, --detach, or --orphan may be used"
       BRANCH_MODE=(-b "${1#*=}")
       BRANCH_KIND="branch"
+      BRANCH_NAME="${1#*=}"
       shift
       ;;
     -B|--reset-branch)
@@ -230,12 +235,14 @@ while [[ $# -gt 0 ]]; do
       [[ "${#BRANCH_MODE[@]}" -eq 0 ]] || die "only one of --branch, --reset-branch, --detach, or --orphan may be used"
       BRANCH_MODE=(-B "$2")
       BRANCH_KIND="branch"
+      BRANCH_NAME="$2"
       shift 2
       ;;
     --reset-branch=*)
       [[ "${#BRANCH_MODE[@]}" -eq 0 ]] || die "only one of --branch, --reset-branch, --detach, or --orphan may be used"
       BRANCH_MODE=(-B "${1#*=}")
       BRANCH_KIND="branch"
+      BRANCH_NAME="${1#*=}"
       shift
       ;;
     -d|--detach)
@@ -364,8 +371,8 @@ while [[ $# -gt 0 ]]; do
     *)
       if [[ -z "${REPO}" ]]; then
         REPO="$1"
-      elif [[ -z "${WORKTREE_NAME}" ]]; then
-        WORKTREE_NAME="$1"
+      elif [[ -z "${BRANCH_ARG}" ]]; then
+        BRANCH_ARG="$1"
       else
         die "unexpected argument: $1"
       fi
@@ -384,24 +391,24 @@ if ! command -v git >/dev/null 2>&1; then
   die "git required"
 fi
 
+CANONICAL_REPO="$(canonical_repo "${REPO}")"
+
 if [[ -z "${REPO_PATH}" ]]; then
-  REPO_PATH="$(repo_path_from_repo "${REPO}")"
+  REPO_PATH="$(repo_path_from_repo "${CANONICAL_REPO}")"
 fi
 
 if [[ -z "${BARE_DIR}" ]]; then
   BARE_DIR="${ROOT%/}/${REPO_PATH}/.bare"
 fi
 
-if [[ -z "${WORKTREE_NAME}" ]]; then
-  WORKTREE_NAME="$(default_worktree_name "${REPO}")"
+if [[ -n "${BRANCH_ARG}" && "${BASE_BRANCH}" == "auto" && "${BRANCH_KIND}" == "" ]]; then
+  BASE_BRANCH="${BRANCH_ARG}"
 fi
-
-WORKTREE_DIR="${ROOT%/}/${REPO_PATH}/${WORKTREE_NAME}"
 
 mkdir -p "$(dirname "${BARE_DIR}")"
 
 if [[ ! -d "${BARE_DIR}" ]]; then
-  gh repo clone "${REPO}" "${BARE_DIR}" "${GH_CLONE_FLAGS[@]}" -- --bare "${CLONE_FLAGS[@]}"
+  gh repo clone "${CANONICAL_REPO}" "${BARE_DIR}" "${GH_CLONE_FLAGS[@]}" -- --bare "${CLONE_FLAGS[@]}"
 else
   if [[ "$(git --git-dir="${BARE_DIR}" rev-parse --is-bare-repository 2>/dev/null || true)" != "true" ]]; then
     die "${BARE_DIR} exists but is not a bare git repository"
@@ -429,6 +436,18 @@ if [[ "${BRANCH_KIND}" != "orphan" && "${BASE_BRANCH}" == "auto" ]]; then
   fi
 fi
 
+if [[ -z "${WORKTREE_NAME}" ]]; then
+  if [[ -n "${BRANCH_NAME}" ]]; then
+    WORKTREE_NAME="$(sanitize_path_segment "${BRANCH_NAME}")"
+  elif [[ "${BRANCH_KIND}" == "orphan" ]]; then
+    WORKTREE_NAME="$(sanitize_path_segment "${BRANCH_ARG:-orphan}")"
+  else
+    WORKTREE_NAME="$(sanitize_path_segment "${BASE_BRANCH}")"
+  fi
+fi
+
+WORKTREE_DIR="${ROOT%/}/${REPO_PATH}/${WORKTREE_NAME}"
+
 if [[ -e "${WORKTREE_DIR}" ]]; then
   die "${WORKTREE_DIR} already exists"
 fi
@@ -437,6 +456,10 @@ mkdir -p "$(dirname "${WORKTREE_DIR}")"
 
 if [[ "${BRANCH_KIND}" == "orphan" ]]; then
   git --git-dir="${BARE_DIR}" worktree add --quiet "${WORKTREE_FLAGS[@]}" "${BRANCH_MODE[@]}" "${WORKTREE_DIR}"
-else
+elif [[ "${#BRANCH_MODE[@]}" -gt 0 ]]; then
   git --git-dir="${BARE_DIR}" worktree add --quiet "${WORKTREE_FLAGS[@]}" "${BRANCH_MODE[@]}" "${WORKTREE_DIR}" "origin/${BASE_BRANCH}"
+elif git --git-dir="${BARE_DIR}" show-ref --verify --quiet "refs/heads/${BASE_BRANCH}"; then
+  git --git-dir="${BARE_DIR}" worktree add --quiet "${WORKTREE_FLAGS[@]}" "${WORKTREE_DIR}" "${BASE_BRANCH}"
+else
+  git --git-dir="${BARE_DIR}" worktree add --quiet "${WORKTREE_FLAGS[@]}" -b "${BASE_BRANCH}" "${WORKTREE_DIR}" "origin/${BASE_BRANCH}"
 fi
