@@ -35,7 +35,7 @@ Options:
       --include-all-branches      Include all branches from template repository
 
   Shared clone and worktree:
-  -r, --root DIR                  Root for repos (default: $GHWRC_ROOT or ~/with-runners)
+  -r, --root DIR                  Root for repos (default: $GHWRC_ROOT or ~/Projects)
       --repo-path PATH            Path under root for this repo (default: gh/OWNER/REPO)
       --bare-dir DIR              Bare repo path (default: ROOT/REPO_PATH/.bare)
       --base BRANCH               Base branch (default: origin's default branch)
@@ -174,7 +174,7 @@ need_value() {
   [[ "${count}" -ge 2 ]] || die "${option} requires a value"
 }
 
-ROOT="${GHWRC_ROOT:-"${HOME}/with-runners"}"
+ROOT="${GHWRC_ROOT:-"${HOME}/Projects"}"
 REPO_PATH=""
 BARE_DIR=""
 BASE_BRANCH="auto"

@@ -7,12 +7,12 @@ description: Default custom rules for creating new GitHub repos on this machine 
 
 You are the agent supervising this machine. When the user asks to create a GitHub repo, create the remote and local worktree from here, then report the resulting repo URL and local path.
 
-`ghwrc` creates the GitHub repository, then creates or reuses the local shared bare clone and adds a worktree under `~/with-runners` by default.
+`ghwrc` creates the GitHub repository, then creates or reuses the local shared bare clone and adds a worktree under `~/Projects` by default.
 
 For `OWNER/REPO`, the normal layout is:
 
 ```text
-~/with-runners/gh/OWNER/REPO/
+~/Projects/gh/OWNER/REPO/
 ├── .bare/
 └── main/
 ```
@@ -38,7 +38,7 @@ If the new repo has no initial content and no explicit branch mode, `ghwrc` crea
 
 ## Paths and Flags
 
-- `GHWRC_ROOT` overrides the root; it defaults to `~/with-runners`.
+- `GHWRC_ROOT` overrides the root; it defaults to `~/Projects`.
 - `--repo-path PATH` overrides the `gh/OWNER/REPO` path under the root.
 - `--bare-dir DIR` overrides the shared bare repo path.
 - `--base BRANCH` selects the branch used as the starting point when the repo has initial content.

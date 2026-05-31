@@ -19,7 +19,7 @@ Examples:
   ghwc https://github.com/cli/cli.git main --filter=blob:none
 
 Options:
-  -r, --root DIR                  Root for repos (default: $GHWC_ROOT or ~/with-runners)
+  -r, --root DIR                  Root for repos (default: $GHWC_ROOT or ~/Projects)
       --repo-path PATH            Path under root for this repo (default: gh/OWNER/REPO)
       --bare-dir DIR              Bare repo path (default: ROOT/REPO_PATH/.bare)
       --base BRANCH               Base branch (default: origin's default branch)
@@ -158,7 +158,7 @@ need_value() {
   [[ "${count}" -ge 2 ]] || die "${option} requires a value"
 }
 
-ROOT="${GHWC_ROOT:-"${HOME}/with-runners"}"
+ROOT="${GHWC_ROOT:-"${HOME}/Projects"}"
 REPO_PATH=""
 BARE_DIR=""
 BASE_BRANCH="auto"
