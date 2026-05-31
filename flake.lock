@@ -1,5 +1,37 @@
 {
   "nodes": {
+    "automate-accounts": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1780258788,
+        "narHash": "sha256-Eli72jk36oPaR4eAl03fFv7+KHQV3RWVL2uoaZPYU9A=",
+        "owner": "ToxicPine",
+        "repo": "automate-accounts",
+        "rev": "a0ee0d83ab576807ff1829b921e8f5bac27e6189",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ToxicPine",
+        "repo": "automate-accounts",
+        "type": "github"
+      }
+    },
+    "google-workspace-cli": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774983075,
+        "narHash": "sha256-YyNIHbyZrLlXYtWxZY8Um19MsnLharmS+nWGWO89fsA=",
+        "owner": "googleworkspace",
+        "repo": "cli",
+        "rev": "a3768d0e82ad83cca2da97724e46bea4ff0e6dbd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "googleworkspace",
+        "repo": "cli",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1779560665,
@@ -18,6 +50,8 @@
     },
     "root": {
       "inputs": {
+        "automate-accounts": "automate-accounts",
+        "google-workspace-cli": "google-workspace-cli",
         "nixpkgs": "nixpkgs"
       }
     }

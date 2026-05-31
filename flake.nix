@@ -2,9 +2,17 @@
   description = "Silly Tools, TiSslooly";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.automate-accounts = {
+    url = "github:ToxicPine/automate-accounts";
+    flake = false;
+  };
+  inputs.google-workspace-cli = {
+    url = "github:googleworkspace/cli";
+    flake = false;
+  };
 
   outputs =
-    { self, nixpkgs, ... }:
+    { self, nixpkgs, automate-accounts, google-workspace-cli, ... }:
     let
       skills = import ./skills.nix { lib = nixpkgs.lib; };
 
@@ -44,6 +52,14 @@
         {
           name = "vusperize";
           skillsPath = ./packages/vusperize/skills;
+        }
+        {
+          name = "account-automation";
+          skillsPath = automate-accounts + "/skills";
+        }
+        {
+          name = "google-workspace";
+          skillsPath = google-workspace-cli + "/skills";
         }
       ];
     in
