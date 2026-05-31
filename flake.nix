@@ -3,16 +3,22 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, ... }:
+  outputs =
+    { self, nixpkgs, ... }:
     let
       skills = import ./skills.nix { lib = nixpkgs.lib; };
 
-      forAllSystems = f:
-        nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (system:
-          f (import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-          }));
+      forAllSystems =
+        f:
+        nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
+          system:
+          f (
+            import nixpkgs {
+              localSystem.system = system;
+              config.allowUnfree = true;
+            }
+          )
+        );
 
       packagesWithSkills = [
         {
@@ -42,7 +48,8 @@
       ];
     in
     {
-      packages = forAllSystems (pkgs:
+      packages = forAllSystems (
+        pkgs:
         {
           prasskitte = pkgs.callPackage ./packages/prasskitte { };
           boondoggle = pkgs.callPackage ./packages/boondoggle { };
@@ -58,7 +65,9 @@
               echo "hello from tissloolly"
             '';
           };
-        } // skills.mkSkillsPackages pkgs packagesWithSkills);
+        }
+        // skills.mkSkillsPackages pkgs packagesWithSkills
+      );
 
       homeModules = skills.mkSkillsHomeModules {
         inherit self;
