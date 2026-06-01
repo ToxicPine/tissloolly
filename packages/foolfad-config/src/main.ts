@@ -1,35 +1,33 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read
 import { parseCliArgs, usage } from "./lib/args.ts";
-import { type CliBoundaryError, invalidCliArgs, invalidCliArgsFrom } from "./lib/cli-error.ts";
+import { invalidCliArgs } from "./lib/cli-error.ts";
 import { Out, printError } from "./lib/out.ts";
 import type { Result } from "./lib/result.ts";
 import * as gh from "./targets/gh/index.ts";
-import {
-  type CliMode,
-  type GhMutationCommand,
-  parseGhMutationCommand,
-} from "./targets/gh/mutation-command-schema.ts";
 
-type JsonEnvelope =
-  | {
-    ok: true;
-    target: string;
-    command: string;
-    state: unknown;
-  }
-  | {
-    ok: true;
-    help: string;
-  }
-  | {
-    ok: false;
-    target?: string;
-    command?: string;
-    error: {
-      type: string;
-      detail: unknown;
-    };
+type SuccessEnvelope = {
+  ok: true;
+  target: string;
+  command: string;
+  state: unknown;
+};
+
+type HelpEnvelope = {
+  ok: true;
+  help: string;
+};
+
+type ErrorEnvelope = {
+  ok: false;
+  target?: string;
+  command?: string;
+  error: {
+    type: string;
+    detail: unknown;
   };
+};
+
+type JsonEnvelope = SuccessEnvelope | HelpEnvelope | ErrorEnvelope;
 
 async function main(): Promise<void> {
   const parsed = parseCliArgs(Deno.args);
@@ -96,7 +94,7 @@ async function main(): Promise<void> {
 async function runGh(
   out: Out<JsonEnvelope>,
   transport: string,
-  mode: CliMode,
+  mode: gh.CliMode,
   command: string,
   commandArgs: string[],
 ): Promise<void> {
@@ -108,8 +106,8 @@ async function runGh(
       result = await gh.check(ctx);
       break;
     default: {
-      const parsedCommand = parseGhMutationCommandAtBoundary(mode, command, commandArgs);
-      if (!parsedCommand.ok) {
+      const parsedInput = gh.parseMutationInput(mode, command, commandArgs);
+      if (!parsedInput.ok) {
         fail(
           out,
           2,
@@ -117,16 +115,16 @@ async function runGh(
             ok: false,
             target: "gh",
             command,
-            error: parsedCommand.error,
+            error: parsedInput.error,
           },
-          parsedCommand.error.type,
-          parsedCommand.error.detail,
+          parsedInput.error.type,
+          parsedInput.error.detail,
         );
       }
 
-      const input = mode === "json"
-        ? { mode, command: parsedCommand.value }
-        : { mode, command: parsedCommand.value, tui: out };
+      const input = parsedInput.value.mode === "json"
+        ? parsedInput.value
+        : { ...parsedInput.value, tui: out };
       result = await gh.mutate(ctx, input);
       break;
     }
@@ -156,18 +154,6 @@ async function runGh(
 
   gh.printResult(out, command, result.value.state);
   out.flush();
-}
-
-function parseGhMutationCommandAtBoundary(
-  mode: CliMode,
-  command: string,
-  argv: string[],
-): Result<GhMutationCommand, CliBoundaryError> {
-  try {
-    return { ok: true, value: parseGhMutationCommand(mode, command, argv) };
-  } catch (error) {
-    return { ok: false, error: invalidCliArgsFrom(error) };
-  }
 }
 
 function fail(

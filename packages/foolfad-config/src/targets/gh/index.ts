@@ -1,11 +1,18 @@
 import type { OutputControl } from "../../lib/out.ts";
-import { remoteJson, type RemoteJsonError } from "../../lib/remote.ts";
+import { type CliBoundaryError, invalidCliArgsFrom } from "../../lib/cli-error.ts";
+import { mutateWrapper, remoteJson, type RemoteJsonError } from "../../lib/remote.ts";
 import { err, ok, type Result } from "../../lib/result.ts";
-import { mutateWrapper } from "../../lib/transport.ts";
 import { type GuardResult, guardSchema } from "./guard-schema.ts";
-import planGhMutation, { type MutationInput } from "./mutation.ts";
-import { mutationSchema } from "./mutation-schema.ts";
+import {
+  type CliMode,
+  type ParsedMutationInput,
+  parseGhMutationInput,
+} from "./mutation-command-schema.ts";
+import { completeGhMutationInput, type MutationInput } from "./mutation.ts";
+import type { MutationPayload } from "./mutation-schema.ts";
 import { type GhState, ghStateSchema } from "./state-schema.ts";
+
+export type { CliMode };
 
 export type CommandContext = {
   transport: string;
@@ -19,8 +26,7 @@ export type CommandError = {
   type:
     | RemoteJsonError["type"]
     | "guard-failed"
-    | "mutation-planning-failed"
-    | "invalid-mutation";
+    | "mutation-planning-failed";
   detail: unknown;
 };
 
@@ -42,7 +48,7 @@ async function query(ctx: CommandContext): Promise<Result<GhState, CommandError>
 
 async function applyMutation(
   ctx: CommandContext,
-  payload: unknown,
+  payload: MutationPayload,
 ): Promise<Result<GhState, CommandError>> {
   return await remoteJson(
     ctx.transport,
@@ -63,6 +69,18 @@ async function guarded(ctx: CommandContext): Promise<Result<undefined, CommandEr
     });
   }
   return ok(undefined);
+}
+
+export function parseMutationInput(
+  mode: CliMode,
+  command: string,
+  argv: string[],
+): Result<ParsedMutationInput, CliBoundaryError> {
+  try {
+    return ok(parseGhMutationInput(mode, command, argv));
+  } catch (error) {
+    return err(invalidCliArgsFrom(error));
+  }
 }
 
 export async function check(ctx: CommandContext): Promise<Result<CommandSuccess, CommandError>> {
@@ -88,17 +106,12 @@ export async function mutate(
     return guardResult;
   }
 
-  const planned = await planGhMutation(input);
-  if (!planned.ok) {
-    return err({ type: "mutation-planning-failed", detail: planned.error });
+  const payload = await completeGhMutationInput(input);
+  if (!payload.ok) {
+    return err({ type: "mutation-planning-failed", detail: payload.error });
   }
 
-  const payload = mutationSchema.safeParse(planned.value);
-  if (!payload.success) {
-    return err({ type: "invalid-mutation", detail: payload.error.issues });
-  }
-
-  const state = await applyMutation(ctx, payload.data);
+  const state = await applyMutation(ctx, payload.value);
   if (!state.ok) {
     return state;
   }

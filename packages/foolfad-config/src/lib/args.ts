@@ -37,43 +37,54 @@ Examples:
 `;
 
 export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
-  const json = argv.includes("--json");
+  let json = false;
   let transport: string | undefined;
-  const rest: string[] = [];
+  let target: string | undefined;
+  let command: string | undefined;
+  const targetArgs: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
 
-    if (arg === "-h" || arg === "--help") {
-      return err({ type: "help", json });
-    }
-
-    if (arg === "--json") {
-      continue;
-    }
-
-    if (arg === "--transport") {
-      const value = argv[index + 1];
-      if (!value) {
-        return err({ type: "invalid-args", json, message: "--transport requires a value" });
+    if (!target || !command) {
+      if (arg === "--json") {
+        json = true;
+        continue;
       }
-      transport = value;
-      index += 1;
-      continue;
-    }
 
-    if (arg.startsWith("--transport=")) {
-      transport = arg.slice("--transport=".length);
-      if (!transport) {
-        return err({ type: "invalid-args", json, message: "--transport requires a value" });
+      if (arg === "-h" || arg === "--help") {
+        return err({ type: "help", json });
+      }
+
+      if (arg === "--transport") {
+        const value = argv[index + 1];
+        if (!value) {
+          return err({ type: "invalid-args", json, message: "--transport requires a value" });
+        }
+        transport = value;
+        index += 1;
+        continue;
+      }
+
+      if (arg.startsWith("--transport=")) {
+        transport = arg.slice("--transport=".length);
+        if (!transport) {
+          return err({ type: "invalid-args", json, message: "--transport requires a value" });
+        }
+        continue;
+      }
+
+      if (!target) {
+        target = arg;
+      } else {
+        command = arg;
       }
       continue;
     }
 
-    rest.push(arg);
+    targetArgs.push(arg);
   }
 
-  const [target, command, ...targetArgs] = rest;
   if (!target || !command) {
     return err({ type: "invalid-args", json, message: "TARGET and COMMAND are required" });
   }

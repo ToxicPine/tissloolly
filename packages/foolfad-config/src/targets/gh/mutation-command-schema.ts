@@ -1,64 +1,78 @@
 import { parseArgs } from "node:util";
 import { z } from "zod";
+import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
 export type CliMode = "json" | "interactive";
 
-const configureMutationCommandSchema = z.object({
+const configureDraftSchema = z.object({
   type: z.literal("configure"),
   token: z.string().min(1).optional(),
   gitUserName: z.string().min(1).optional(),
   gitUserEmail: z.string().email().optional(),
 });
 
-const jsonConfigureMutationCommandSchema = configureMutationCommandSchema.extend({
+type ConfigureMutationDraft = z.infer<typeof configureDraftSchema>;
+type CompleteConfigureMutationDraft = ConfigureMutationDraft & { token: string };
+
+const completeConfigureDraftSchema = configureDraftSchema.extend({
   token: z.string().min(1),
+}).transform(configureDraftToPayload).pipe(mutationSchema);
+
+type InteractiveMutationDraft = ConfigureMutationDraft;
+
+export type ParsedMutationInput =
+  | {
+    mode: "json";
+    payload: MutationPayload;
+  }
+  | {
+    mode: "interactive";
+    draft: InteractiveMutationDraft;
+  };
+
+const configureDraftArgvSchema = z.array(z.string()).transform((argv, ctx) => {
+  let draft: unknown;
+  try {
+    const parsed = parseArgs({
+      args: argv,
+      allowPositionals: false,
+      strict: true,
+      options: {
+        token: { type: "string" },
+        "git-user-name": { type: "string" },
+        "git-user-email": { type: "string" },
+      },
+    });
+
+    draft = {
+      type: "configure",
+      token: parsed.values.token,
+      gitUserName: parsed.values["git-user-name"],
+      gitUserEmail: parsed.values["git-user-email"],
+    };
+  } catch (error) {
+    ctx.addIssue({
+      code: "custom",
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return z.NEVER;
+  }
+
+  return draft;
 });
 
-export type ConfigureMutationCommand = z.infer<typeof configureMutationCommandSchema>;
+const jsonConfigureArgvSchema = configureDraftArgvSchema
+  .pipe(completeConfigureDraftSchema)
+  .transform((payload) => ({ mode: "json" as const, payload }));
 
-export type GhMutationCommand = ConfigureMutationCommand;
+const interactiveConfigureArgvSchema = configureDraftArgvSchema
+  .pipe(configureDraftSchema)
+  .transform((draft) => ({ mode: "interactive" as const, draft }));
 
 const configureArgvSchema = (mode: CliMode) =>
-  z.array(z.string()).transform((argv, ctx) => {
-    let command: unknown;
-    try {
-      const parsed = parseArgs({
-        args: argv,
-        allowPositionals: false,
-        strict: true,
-        options: {
-          token: { type: "string" },
-          "git-user-name": { type: "string" },
-          "git-user-email": { type: "string" },
-        },
-      });
+  mode === "json" ? jsonConfigureArgvSchema : interactiveConfigureArgvSchema;
 
-      command = {
-        type: "configure",
-        token: parsed.values.token,
-        gitUserName: parsed.values["git-user-name"],
-        gitUserEmail: parsed.values["git-user-email"],
-      };
-    } catch (error) {
-      ctx.addIssue({
-        code: "custom",
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return z.NEVER;
-    }
-
-    const parsed = mode === "json"
-      ? jsonConfigureMutationCommandSchema.safeParse(command)
-      : configureMutationCommandSchema.safeParse(command);
-    if (!parsed.success) {
-      addIssues(ctx, parsed.error.issues);
-      return z.NEVER;
-    }
-
-    return parsed.data;
-  });
-
-const ghMutationCommandArgvSchema = (mode: CliMode) =>
+const ghMutationInputArgvSchema = (mode: CliMode) =>
   z.array(z.string()).min(1, "gh mutation command is required").transform((argv, ctx) => {
     const [command, ...commandArgs] = argv;
 
@@ -80,12 +94,12 @@ const ghMutationCommandArgvSchema = (mode: CliMode) =>
     }
   });
 
-export function parseGhMutationCommand(
+export function parseGhMutationInput(
   mode: CliMode,
   command: string,
   argv: string[],
-): GhMutationCommand {
-  return ghMutationCommandArgvSchema(mode).parse([command, ...argv]);
+): ParsedMutationInput {
+  return ghMutationInputArgvSchema(mode).parse([command, ...argv]);
 }
 
 function addIssues(ctx: z.RefinementCtx, issues: z.core.$ZodIssue[]): void {
@@ -96,4 +110,12 @@ function addIssues(ctx: z.RefinementCtx, issues: z.core.$ZodIssue[]): void {
       path: issue.path,
     });
   }
+}
+
+function configureDraftToPayload(draft: CompleteConfigureMutationDraft): MutationPayload {
+  return {
+    githubToken: draft.token,
+    ...(draft.gitUserName ? { gitUserName: draft.gitUserName } : {}),
+    ...(draft.gitUserEmail ? { gitUserEmail: draft.gitUserEmail } : {}),
+  };
 }
