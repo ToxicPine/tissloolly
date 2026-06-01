@@ -2,6 +2,11 @@ export type OutputControl = {
   write(message: string): void;
 };
 
+export type FailureOutput<JsonArtifact> = OutputControl & {
+  stage(artifact: JsonArtifact): void;
+  flush(): void;
+};
+
 export type TuiControl = {
   prompt(message: string): Promise<string | undefined>;
 };
@@ -81,6 +86,19 @@ export function printError(
   if (rendered) {
     out.write(`${rendered}\n`);
   }
+}
+
+export function fail<JsonArtifact>(
+  out: FailureOutput<JsonArtifact>,
+  code: number,
+  artifact: JsonArtifact,
+  message: string,
+  detail?: unknown,
+): never {
+  out.stage(artifact);
+  printError(out, "foolfad-configure", message, detail);
+  out.flush();
+  Deno.exit(code);
 }
 
 export function jsonLines(value: unknown): string {

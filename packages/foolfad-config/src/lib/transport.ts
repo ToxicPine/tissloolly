@@ -13,6 +13,19 @@ export type TransportError =
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
+export function resolveTransportCommand(
+  override?: string,
+): Result<string, TransportError> {
+  const transport = override ?? Deno.env.get("FOOLFAD_CONFIG_TRANSPORT");
+  if (!transport?.trim()) {
+    return err({
+      type: "transport-command-missing",
+      detail: "set --transport or FOOLFAD_CONFIG_TRANSPORT",
+    });
+  }
+  return ok(transport);
+}
+
 export async function runTransport(
   transport: string,
   script: string,

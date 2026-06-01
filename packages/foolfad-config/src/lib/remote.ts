@@ -38,19 +38,17 @@ export async function remoteJson<T>(
   return parseSchema(schema, json.value);
 }
 
-function writeHeredoc(destination: string, label: string, body: string): string {
-  return `cat > ${destination} <<'${label}'\n${body.replace(/\n?$/, "\n")}${label}\n`;
-}
-
 export function mutateWrapper(script: string, payload: unknown): string {
   const payloadJson = JSON.stringify(payload);
+  const scriptBody = script.replace(/\n?$/, "\n");
   return `set -euo pipefail
 tmp_script="$(mktemp)"
 cleanup() {
   rm -f "$tmp_script"
 }
 trap cleanup EXIT
-${writeHeredoc('"$tmp_script"', "FOOLFAD_CONFIG_MUTATE_SCRIPT", script)}
+cat > "$tmp_script" <<'FOOLFAD_CONFIG_MUTATE_SCRIPT'
+${scriptBody}FOOLFAD_CONFIG_MUTATE_SCRIPT
 bash "$tmp_script" <<'FOOLFAD_CONFIG_MUTATION_PAYLOAD'
 ${payloadJson}
 FOOLFAD_CONFIG_MUTATION_PAYLOAD

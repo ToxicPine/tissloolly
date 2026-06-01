@@ -5,14 +5,18 @@ import { err, ok, type Result } from "../../lib/result.ts";
 import { type GuardResult, guardSchema } from "./guard-schema.ts";
 import {
   type CliMode,
+  type GhCommand,
+  type GhMutationCommand,
   type ParsedMutationInput,
+  parseGhCommand,
   parseGhMutationInput,
 } from "./mutation-command-schema.ts";
 import { completeGhMutationInput, type MutationInput } from "./mutation.ts";
 import type { MutationPayload } from "./mutation-schema.ts";
 import { type GhState, ghStateSchema } from "./state-schema.ts";
 
-export type { CliMode };
+export type { CliMode, GhCommand, GhMutationCommand };
+export { parseGhCommand };
 
 export type CommandContext = {
   transport: string;
@@ -73,7 +77,7 @@ async function guarded(ctx: CommandContext): Promise<Result<undefined, CommandEr
 
 export function parseMutationInput(
   mode: CliMode,
-  command: string,
+  command: GhMutationCommand,
   argv: string[],
 ): Result<ParsedMutationInput, CliBoundaryError> {
   try {

@@ -1,14 +1,15 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read
 import { parseCliArgs, usage } from "./lib/args.ts";
 import { invalidCliArgs } from "./lib/cli-error.ts";
-import { Out, printError } from "./lib/out.ts";
+import { fail, Out } from "./lib/out.ts";
 import type { Result } from "./lib/result.ts";
+import { resolveTransportCommand } from "./lib/transport.ts";
 import * as gh from "./targets/gh/index.ts";
 
 type SuccessEnvelope = {
   ok: true;
-  target: string;
-  command: string;
+  target: "gh";
+  command: gh.GhCommand;
   state: unknown;
 };
 
@@ -54,8 +55,8 @@ async function main(): Promise<void> {
 
   const opts = parsed.value;
   const mode = opts.json ? "json" : "interactive";
-  const transport = opts.transport ?? Deno.env.get("FOOLFAD_CONFIG_TRANSPORT");
-  if (!transport) {
+  const transport = resolveTransportCommand(opts.transport);
+  if (!transport.ok) {
     fail(
       out,
       2,
@@ -63,19 +64,32 @@ async function main(): Promise<void> {
         ok: false,
         target: opts.target,
         command: opts.command,
-        error: {
-          type: "transport-command-missing",
-          detail: "set --transport or FOOLFAD_CONFIG_TRANSPORT",
-        },
+        error: transport.error,
       },
-      "set --transport or FOOLFAD_CONFIG_TRANSPORT",
+      transport.error.type,
+      transport.error.detail,
     );
   }
 
   switch (opts.target) {
-    case "gh":
-      await runGh(out, transport, mode, opts.command, opts.targetArgs);
+    case "gh": {
+      const command = gh.parseGhCommand(opts.command);
+      if (!command) {
+        fail(
+          out,
+          2,
+          {
+            ok: false,
+            target: "gh",
+            command: opts.command,
+            error: invalidCliArgs(`unknown gh command: ${opts.command}`),
+          },
+          `unknown gh command: ${opts.command}`,
+        );
+      }
+      await runGh(out, transport.value, mode, command, opts.targetArgs);
       return;
+    }
     default:
       fail(
         out,
@@ -95,7 +109,7 @@ async function runGh(
   out: Out<JsonEnvelope>,
   transport: string,
   mode: gh.CliMode,
-  command: string,
+  command: gh.GhCommand,
   commandArgs: string[],
 ): Promise<void> {
   const ctx: gh.CommandContext = { transport };
@@ -154,19 +168,6 @@ async function runGh(
 
   gh.printResult(out, command, result.value.state);
   out.flush();
-}
-
-function fail(
-  out: Out<JsonEnvelope>,
-  code: number,
-  artifact: JsonEnvelope,
-  message: string,
-  detail?: unknown,
-): never {
-  out.stage(artifact);
-  printError(out, "foolfad-configure", message, detail);
-  out.flush();
-  Deno.exit(code);
 }
 
 if (import.meta.main) {

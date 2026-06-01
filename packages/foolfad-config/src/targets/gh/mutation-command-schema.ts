@@ -3,6 +3,9 @@ import { z } from "zod";
 import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
 export type CliMode = "json" | "interactive";
+export type GhStateCommand = "check";
+export type GhMutationCommand = "configure";
+export type GhCommand = GhStateCommand | GhMutationCommand;
 
 const configureDraftSchema = z.object({
   type: z.literal("configure"),
@@ -29,6 +32,16 @@ export type ParsedMutationInput =
     mode: "interactive";
     draft: InteractiveMutationDraft;
   };
+
+export function parseGhCommand(command: string): GhCommand | undefined {
+  switch (command) {
+    case "check":
+    case "configure":
+      return command;
+    default:
+      return undefined;
+  }
+}
 
 const configureDraftArgvSchema = z.array(z.string()).transform((argv, ctx) => {
   let draft: unknown;
@@ -96,7 +109,7 @@ const ghMutationInputArgvSchema = (mode: CliMode) =>
 
 export function parseGhMutationInput(
   mode: CliMode,
-  command: string,
+  command: GhMutationCommand,
   argv: string[],
 ): ParsedMutationInput {
   return ghMutationInputArgvSchema(mode).parse([command, ...argv]);
