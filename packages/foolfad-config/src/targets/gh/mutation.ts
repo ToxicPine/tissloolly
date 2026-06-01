@@ -1,17 +1,17 @@
 import { err, ok, type Result } from "../../lib/result.ts";
-import type { OutputControl } from "../../lib/out.ts";
-import type { InteractiveConfigureArgs, JsonConfigureArgs } from "./arg-schema.ts";
+import type { TuiControl } from "../../lib/out.ts";
+import type { GhMutationCommand } from "./mutation-command-schema.ts";
 import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
 export type MutationInput =
   | {
     mode: "json";
-    args: JsonConfigureArgs;
+    command: GhMutationCommand;
   }
   | {
     mode: "interactive";
-    args: InteractiveConfigureArgs;
-    output: OutputControl;
+    command: GhMutationCommand;
+    tui: TuiControl;
   };
 
 export type MutationPlanningError = {
@@ -22,9 +22,18 @@ export type MutationPlanningError = {
 export default async function planGhMutation(
   input: MutationInput,
 ): Promise<Result<MutationPayload, MutationPlanningError>> {
-  const token = input.args.token ??
+  switch (input.command.type) {
+    case "configure":
+      return await planConfigureMutation(input);
+  }
+}
+
+async function planConfigureMutation(
+  input: MutationInput,
+): Promise<Result<MutationPayload, MutationPlanningError>> {
+  const token = input.command.token ??
     (input.mode === "interactive"
-      ? await input.output.prompt("GitHub token for remote gh auth: ")
+      ? await input.tui.prompt("GitHub token for remote gh auth: ")
       : undefined);
 
   if (!token) {
@@ -36,8 +45,8 @@ export default async function planGhMutation(
 
   const payload = {
     githubToken: token,
-    gitUserName: input.args.gitUserName,
-    gitUserEmail: input.args.gitUserEmail,
+    gitUserName: input.command.gitUserName,
+    gitUserEmail: input.command.gitUserEmail,
   };
 
   const parsed = mutationSchema.safeParse(payload);

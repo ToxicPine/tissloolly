@@ -1,6 +1,9 @@
 export type OutputControl = {
-  prompt(message: string): Promise<string | undefined>;
   write(message: string): void;
+};
+
+export type TuiControl = {
+  prompt(message: string): Promise<string | undefined>;
 };
 
 export type OutputIo = {

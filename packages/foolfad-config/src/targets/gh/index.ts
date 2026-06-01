@@ -40,7 +40,7 @@ async function query(ctx: CommandContext): Promise<Result<GhState, CommandError>
   return await remoteJson(ctx.transport, await script("QUERY.sh"), ghStateSchema);
 }
 
-async function mutate(
+async function applyMutation(
   ctx: CommandContext,
   payload: unknown,
 ): Promise<Result<GhState, CommandError>> {
@@ -79,7 +79,7 @@ export async function check(ctx: CommandContext): Promise<Result<CommandSuccess,
   return ok({ state: state.value });
 }
 
-export async function configure(
+export async function mutate(
   ctx: CommandContext,
   input: MutationInput,
 ): Promise<Result<CommandSuccess, CommandError>> {
@@ -98,7 +98,7 @@ export async function configure(
     return err({ type: "invalid-mutation", detail: payload.error.issues });
   }
 
-  const state = await mutate(ctx, payload.data);
+  const state = await applyMutation(ctx, payload.data);
   if (!state.ok) {
     return state;
   }

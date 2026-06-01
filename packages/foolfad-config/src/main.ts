@@ -2,10 +2,13 @@
 import { parseCliArgs, usage } from "./lib/args.ts";
 import { type CliBoundaryError, invalidCliArgs, invalidCliArgsFrom } from "./lib/cli-error.ts";
 import { Out, printError } from "./lib/out.ts";
-import { err, ok, type Result } from "./lib/result.ts";
-import { parseConfigureArgs } from "./targets/gh/arg-schema.ts";
+import type { Result } from "./lib/result.ts";
 import * as gh from "./targets/gh/index.ts";
-import type { MutationInput } from "./targets/gh/mutation.ts";
+import {
+  type CliMode,
+  type GhMutationCommand,
+  parseGhMutationCommand,
+} from "./targets/gh/mutation-command-schema.ts";
 
 type JsonEnvelope =
   | {
@@ -29,9 +32,8 @@ type JsonEnvelope =
   };
 
 async function main(): Promise<void> {
-  const out = new Out<JsonEnvelope>(Deno.args.includes("--json"));
-
   const parsed = parseCliArgs(Deno.args);
+  const out = new Out<JsonEnvelope>(parsed.ok ? parsed.value.json : parsed.error.json);
   if (!parsed.ok) {
     if (parsed.error.type === "help") {
       out.write(`${usage}\n`);
@@ -53,6 +55,7 @@ async function main(): Promise<void> {
   }
 
   const opts = parsed.value;
+  const mode = opts.json ? "json" : "interactive";
   const transport = opts.transport ?? Deno.env.get("FOOLFAD_CONFIG_TRANSPORT");
   if (!transport) {
     fail(
@@ -73,7 +76,7 @@ async function main(): Promise<void> {
 
   switch (opts.target) {
     case "gh":
-      await runGh(out, transport, opts.command, opts.targetArgs);
+      await runGh(out, transport, mode, opts.command, opts.targetArgs);
       return;
     default:
       fail(
@@ -93,6 +96,7 @@ async function main(): Promise<void> {
 async function runGh(
   out: Out<JsonEnvelope>,
   transport: string,
+  mode: CliMode,
   command: string,
   commandArgs: string[],
 ): Promise<void> {
@@ -103,9 +107,9 @@ async function runGh(
     case "check":
       result = await gh.check(ctx);
       break;
-    case "configure": {
-      const input = parseGhConfigureInput(out, commandArgs);
-      if (!input.ok) {
+    default: {
+      const parsedCommand = parseGhMutationCommandAtBoundary(mode, command, commandArgs);
+      if (!parsedCommand.ok) {
         fail(
           out,
           2,
@@ -113,27 +117,19 @@ async function runGh(
             ok: false,
             target: "gh",
             command,
-            error: input.error,
+            error: parsedCommand.error,
           },
-          input.error.type,
-          input.error.detail,
+          parsedCommand.error.type,
+          parsedCommand.error.detail,
         );
       }
-      result = await gh.configure(ctx, input.value);
+
+      const input = mode === "json"
+        ? { mode, command: parsedCommand.value }
+        : { mode, command: parsedCommand.value, tui: out };
+      result = await gh.mutate(ctx, input);
       break;
     }
-    default:
-      fail(
-        out,
-        2,
-        {
-          ok: false,
-          target: "gh",
-          command,
-          error: { type: "unknown-command", detail: command },
-        },
-        `unknown command for gh: ${command}`,
-      );
   }
 
   if (!result.ok) {
@@ -162,18 +158,15 @@ async function runGh(
   out.flush();
 }
 
-function parseGhConfigureInput(
-  out: Out<JsonEnvelope>,
+function parseGhMutationCommandAtBoundary(
+  mode: CliMode,
+  command: string,
   argv: string[],
-): Result<MutationInput, CliBoundaryError> {
+): Result<GhMutationCommand, CliBoundaryError> {
   try {
-    const args = parseConfigureArgs(out.json ? "json" : "interactive", argv);
-    if (args.mode === "json") {
-      return ok({ mode: "json", args });
-    }
-    return ok({ mode: "interactive", args, output: out });
+    return { ok: true, value: parseGhMutationCommand(mode, command, argv) };
   } catch (error) {
-    return err(invalidCliArgsFrom(error));
+    return { ok: false, error: invalidCliArgsFrom(error) };
   }
 }
 

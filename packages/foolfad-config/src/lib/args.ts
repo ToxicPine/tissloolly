@@ -10,6 +10,7 @@ export type CliOptions = {
 
 export type ParseError = {
   type: "help" | "invalid-args";
+  json: boolean;
   message?: string;
 };
 
@@ -36,7 +37,7 @@ Examples:
 `;
 
 export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
-  let json = false;
+  const json = argv.includes("--json");
   let transport: string | undefined;
   const rest: string[] = [];
 
@@ -44,18 +45,17 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
     const arg = argv[index];
 
     if (arg === "-h" || arg === "--help") {
-      return err({ type: "help" });
+      return err({ type: "help", json });
     }
 
     if (arg === "--json") {
-      json = true;
       continue;
     }
 
     if (arg === "--transport") {
       const value = argv[index + 1];
       if (!value) {
-        return err({ type: "invalid-args", message: "--transport requires a value" });
+        return err({ type: "invalid-args", json, message: "--transport requires a value" });
       }
       transport = value;
       index += 1;
@@ -65,7 +65,7 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
     if (arg.startsWith("--transport=")) {
       transport = arg.slice("--transport=".length);
       if (!transport) {
-        return err({ type: "invalid-args", message: "--transport requires a value" });
+        return err({ type: "invalid-args", json, message: "--transport requires a value" });
       }
       continue;
     }
@@ -75,7 +75,7 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
 
   const [target, command, ...targetArgs] = rest;
   if (!target || !command) {
-    return err({ type: "invalid-args", message: "TARGET and COMMAND are required" });
+    return err({ type: "invalid-args", json, message: "TARGET and COMMAND are required" });
   }
 
   return ok({
