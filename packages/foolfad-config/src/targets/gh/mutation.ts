@@ -1,5 +1,5 @@
 import { err, ok, type Result } from "../../lib/result.ts";
-import type { TuiControl } from "../../lib/tui.ts";
+import type { OutputControl } from "../../lib/out.ts";
 import type { InteractiveConfigureArgs, JsonConfigureArgs } from "./arg-schema.ts";
 import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
@@ -11,7 +11,7 @@ export type MutationInput =
   | {
     mode: "interactive";
     args: InteractiveConfigureArgs;
-    tui: TuiControl;
+    output: OutputControl;
   };
 
 export type MutationPlanningError = {
@@ -24,7 +24,7 @@ export default async function planGhMutation(
 ): Promise<Result<MutationPayload, MutationPlanningError>> {
   const token = input.args.token ??
     (input.mode === "interactive"
-      ? await input.tui.prompt("GitHub token for remote gh auth: ")
+      ? await input.output.prompt("GitHub token for remote gh auth: ")
       : undefined);
 
   if (!token) {

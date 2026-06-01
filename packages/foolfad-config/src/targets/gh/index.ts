@@ -1,7 +1,7 @@
 import { z } from "zod";
+import type { OutputControl } from "../../lib/out.ts";
 import { err, ok, type Result } from "../../lib/result.ts";
 import { mutateWrapper, runTransport } from "../../lib/transport.ts";
-import type { TuiControl } from "../../lib/tui.ts";
 import { parseConfigureArgs } from "./arg-schema.ts";
 import { type GuardResult, guardSchema } from "./guard-schema.ts";
 import planGhMutation from "./mutation.ts";
@@ -14,7 +14,7 @@ export type CommandContext = {
   json: boolean;
   transport: string;
   targetArgs: string[];
-  tui: TuiControl;
+  output: OutputControl;
 };
 
 export type CommandSuccess = {
@@ -159,7 +159,9 @@ export async function configure(
   }
 
   const planned = await planGhMutation(
-    args.mode === "json" ? { mode: "json", args } : { mode: "interactive", args, tui: ctx.tui },
+    args.mode === "json"
+      ? { mode: "json", args }
+      : { mode: "interactive", args, output: ctx.output },
   );
   if (!planned.ok) {
     return err({ type: "mutation-planning-failed", detail: planned.error });
@@ -190,4 +192,16 @@ export function summarize(state: GhState): string {
   if (state.credentialHelper) lines.push(`git credential.helper: ${state.credentialHelper}`);
 
   return `${lines.join("\n")}\n`;
+}
+
+export function printResult(
+  output: OutputControl,
+  command: string,
+  state: GhState,
+): void {
+  if (command === "configure") {
+    output.write(`Configured gh.\n${summarize(state)}`);
+  } else {
+    output.write(summarize(state));
+  }
 }
