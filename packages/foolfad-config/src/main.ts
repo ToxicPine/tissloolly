@@ -1,7 +1,11 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read
 import { parseCliArgs, usage } from "./lib/args.ts";
+import { type CliBoundaryError, invalidCliArgs, invalidCliArgsFrom } from "./lib/cli-error.ts";
 import { Out, printError } from "./lib/out.ts";
+import { err, ok, type Result } from "./lib/result.ts";
+import { parseConfigureArgs } from "./targets/gh/arg-schema.ts";
 import * as gh from "./targets/gh/index.ts";
+import type { MutationInput } from "./targets/gh/mutation.ts";
 
 type JsonEnvelope =
   | {
@@ -41,10 +45,7 @@ async function main(): Promise<void> {
       2,
       {
         ok: false,
-        error: {
-          type: "invalid-cli-args",
-          detail: parsed.error.message ?? "invalid arguments",
-        },
+        error: invalidCliArgs(parsed.error.message ?? "invalid arguments"),
       },
       parsed.error.message ?? "invalid arguments",
       "Run `foolfad-configure --help` for usage.",
@@ -70,46 +71,69 @@ async function main(): Promise<void> {
     );
   }
 
-  if (opts.target !== "gh") {
-    fail(
-      out,
-      2,
-      {
-        ok: false,
-        target: opts.target,
-        command: opts.command,
-        error: { type: "unknown-target", detail: opts.target },
-      },
-      `unknown target: ${opts.target}`,
-    );
+  switch (opts.target) {
+    case "gh":
+      await runGh(out, transport, opts.command, opts.targetArgs);
+      return;
+    default:
+      fail(
+        out,
+        2,
+        {
+          ok: false,
+          target: opts.target,
+          command: opts.command,
+          error: { type: "unknown-target", detail: opts.target },
+        },
+        `unknown target: ${opts.target}`,
+      );
   }
+}
 
-  const ctx: gh.CommandContext = {
-    json: out.json,
-    transport,
-    targetArgs: opts.targetArgs,
-    output: out,
-  };
+async function runGh(
+  out: Out<JsonEnvelope>,
+  transport: string,
+  command: string,
+  commandArgs: string[],
+): Promise<void> {
+  const ctx: gh.CommandContext = { transport };
+  let result: Result<gh.CommandSuccess, gh.CommandError>;
 
-  const command = opts.command;
-  const result = command === "check"
-    ? await gh.check(ctx)
-    : command === "configure"
-    ? await gh.configure(ctx)
-    : undefined;
-
-  if (!result) {
-    fail(
-      out,
-      2,
-      {
-        ok: false,
-        target: opts.target,
-        command,
-        error: { type: "unknown-command", detail: command },
-      },
-      `unknown command for gh: ${command}`,
-    );
+  switch (command) {
+    case "check":
+      result = await gh.check(ctx);
+      break;
+    case "configure": {
+      const input = parseGhConfigureInput(out, commandArgs);
+      if (!input.ok) {
+        fail(
+          out,
+          2,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error: input.error,
+          },
+          input.error.type,
+          input.error.detail,
+        );
+      }
+      result = await gh.configure(ctx, input.value);
+      break;
+    }
+    default:
+      fail(
+        out,
+        2,
+        {
+          ok: false,
+          target: "gh",
+          command,
+          error: { type: "unknown-command", detail: command },
+        },
+        `unknown command for gh: ${command}`,
+      );
   }
 
   if (!result.ok) {
@@ -118,7 +142,7 @@ async function main(): Promise<void> {
       1,
       {
         ok: false,
-        target: opts.target,
+        target: "gh",
         command,
         error: result.error,
       },
@@ -129,13 +153,28 @@ async function main(): Promise<void> {
 
   out.stage({
     ok: true,
-    target: opts.target,
+    target: "gh",
     command,
     state: result.value.state,
   });
 
-  gh.printResult(ctx.output, command, result.value.state);
+  gh.printResult(out, command, result.value.state);
   out.flush();
+}
+
+function parseGhConfigureInput(
+  out: Out<JsonEnvelope>,
+  argv: string[],
+): Result<MutationInput, CliBoundaryError> {
+  try {
+    const args = parseConfigureArgs(out.json ? "json" : "interactive", argv);
+    if (args.mode === "json") {
+      return ok({ mode: "json", args });
+    }
+    return ok({ mode: "interactive", args, output: out });
+  } catch (error) {
+    return err(invalidCliArgsFrom(error));
+  }
 }
 
 function fail(
