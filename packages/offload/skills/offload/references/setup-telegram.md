@@ -46,8 +46,8 @@ These are secrets the *machine itself* needs, so store them in the machine's sec
 a project. Using `ambit`:
 
 ```bash
-npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_BOT_TOKEN=<token> --json
-npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_ALLOWED_USERS=<id> --json
+nix run github:ToxicPine/ambit -- secrets set <machine>.<network> TELEGRAM_BOT_TOKEN=<token> --json
+nix run github:ToxicPine/ambit -- secrets set <machine>.<network> TELEGRAM_ALLOWED_USERS=<id> --json
 ```
 
 `TELEGRAM_ALLOWED_USERS` takes a comma-separated list when more than one person is allowed, e.g.
@@ -58,7 +58,7 @@ results or `vusperize` pings when no chat is passed. For a normal one-on-one cha
 the user's Telegram ID:
 
 ```bash
-npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_HOME_CHANNEL=<id> --json
+nix run github:ToxicPine/ambit -- secrets set <machine>.<network> TELEGRAM_HOME_CHANNEL=<id> --json
 ```
 
 ## 4. Check it works
@@ -87,5 +87,5 @@ ID.
 ## Where these settings live
 
 The bot token, allowed users, and home chat belong to the *machine*. Keep them in
-`ambit secrets set --json`, out of every project. Machine credentials stay with the machine.
-Project-specific settings stay with the project.
+`nix run github:ToxicPine/ambit -- secrets set ... --json`, out of every project. Machine
+credentials stay with the machine. Project-specific settings stay with the project.

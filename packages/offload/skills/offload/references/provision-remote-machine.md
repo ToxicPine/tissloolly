@@ -7,19 +7,19 @@ offloaded work, and saves the settings `foolfad` needs to find it later.
 This rents a real server and stores secrets. Confirm with the user before any step that costs money
 or saves a token, password, or key.
 
-The server is managed with **ambit** (`npx @cardelli/ambit ... --json`). Use `--json` on ambit
-commands in this workflow. Ambit puts the server on a private network that only the user's devices
-can reach. The server starts from a ready-made image with the hand-off tools installed and
-persistent disk storage.
+The server is managed with **ambit** (`nix run github:ToxicPine/ambit -- ... --json`). In this
+workflow, prefer the Nix-run form over `npx`, and use `--json` on ambit commands. Ambit puts the
+server on a private network that only the user's devices can reach. The server starts from a
+ready-made image with the hand-off tools installed and persistent disk storage.
 
 Fly.io is the hosting service underneath. The user does not need to understand it or log into it
 directly; `ambit` handles it. Mention Fly.io only when the user must make a real decision, such as
 accepting cost or providing a credential.
 
 ## 1. Make sure ambit is logged in
-Run `npx @cardelli/ambit auth whoami --json`. If it is not logged in, run
-`npx @cardelli/ambit auth login --json`. Login needs a Fly.io token and a Tailscale key. Help the
-user get them if needed.
+Run `nix run github:ToxicPine/ambit -- auth whoami --json`. If it is not logged in, run
+`nix run github:ToxicPine/ambit -- auth login --json`. Login needs a Fly.io token and a Tailscale
+key. Help the user get them if needed.
 
 ## 2. Pick names, together with the user
 Choose a machine name and network name. They combine as `<machine>.<network>`, for example
@@ -29,13 +29,13 @@ One rule matters: the deploy name, `HOSTNAME` value, and final address must be t
 If they differ, machine web links will not work.
 
 ## 3. Make sure the network exists
-Run `npx @cardelli/ambit status networks --json`. If `<network>` isn't in the list, create it:
-`npx @cardelli/ambit create <network> --json`.
+Run `nix run github:ToxicPine/ambit -- status networks --json`. If `<network>` isn't in the list,
+create it: `nix run github:ToxicPine/ambit -- create <network> --json`.
 
 ## 4. Deploy the machine from its GitHub template
 The machine definition lives in a separate project. Deploy it from the branch with `ambit` template
 mode:
-`npx @cardelli/ambit deploy <machine>.<network> --template ToxicPine/hermes-ambit@opinionated --json`
+`nix run github:ToxicPine/ambit -- deploy <machine>.<network> --template ToxicPine/hermes-ambit@opinionated --json`
 
 Use template mode exactly as shown. Do not use image-only mode: it writes a bare config without the
 `/data` volume, so the machine would lose state after restart.
@@ -48,7 +48,7 @@ is optional: it relies on authenticated Codex on the machine. If the user wants 
 
 ## 5. Set the machine hostname
 Set `HOSTNAME` after deployment so the machine's web links match the private address:
-`npx @cardelli/ambit secrets set <machine>.<network> HOSTNAME=<machine>.<network> --json`
+`nix run github:ToxicPine/ambit -- secrets set <machine>.<network> HOSTNAME=<machine>.<network> --json`
 
 The deploy name, `HOSTNAME` value, and final address must all be the exact same text.
 
@@ -86,7 +86,7 @@ how to connect:
   `FOOLFAD_TRANSPORT='foolfad-tailscale <machine>.<network>'` (for example
   `foolfad-tailscale box.lab`). Plain SSH works the same way with `foolfad-ssh <machine>.<network>`
   if the user prefers, or for a machine reachable over regular SSH.
-- **Fly:** `npx @cardelli/ambit status app <machine>.<network> --json` — note the Fly app name and
+- **Fly:** `nix run github:ToxicPine/ambit -- status app <machine>.<network> --json` — note the Fly app name and
   the machine id, then set `FOOLFAD_TRANSPORT='foolfad-fly --app <app> --machine <machine-id>'`.
 
 Whichever transport you choose, the adapter (`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`)
@@ -106,6 +106,6 @@ machine through the `foolfad-config` skill. See `references/assistants-on-the-ma
 offload docs refer to assistant setup.
 
 Secrets rule: anything the *machine itself* needs, such as tokens or keys, goes in
-`ambit secrets set --json` and stays out of projects. Anything the *work* needs, such as per-project
-settings, goes in the project's devShell or in an encrypted project file (`age` or `sops`). Keep
-machine credentials separate from project settings.
+`nix run github:ToxicPine/ambit -- secrets set ... --json` and stays out of projects. Anything the
+*work* needs, such as per-project settings, goes in the project's devShell or in an encrypted project
+file (`age` or `sops`). Keep machine credentials separate from project settings.
