@@ -1,5 +1,7 @@
 import { err, ok, type Result } from "./result.ts";
 
+export type CliMode = "json" | "interactive";
+
 export type CliOptions = {
   json: boolean;
   transport?: string;

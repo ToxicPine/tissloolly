@@ -7,28 +7,22 @@ export type FailureOutput<JsonArtifact> = OutputControl & {
   flush(): void;
 };
 
-export type TuiControl = {
-  prompt(message: string): Promise<string | undefined>;
-};
-
-export type OutputIo = {
-  input?: Pick<typeof Deno.stdin, "read">;
-  write?: Pick<typeof Deno.stdout, "writeSync">;
+export type CliIo = {
+  stdin: Pick<typeof Deno.stdin, "read">;
+  stdout: Pick<typeof Deno.stdout, "writeSync">;
+  stderr: Pick<typeof Deno.stderr, "writeSync">;
 };
 
 const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 
 export class Out<JsonArtifact> {
   readonly json: boolean;
-  #input: Pick<typeof Deno.stdin, "read">;
   #write: Pick<typeof Deno.stdout, "writeSync">;
   #artifact: JsonArtifact | undefined;
 
-  constructor(json: boolean, io: OutputIo = {}) {
+  constructor(json: boolean, io: CliIo) {
     this.json = json;
-    this.#input = io.input ?? Deno.stdin;
-    this.#write = io.write ?? Deno.stdout;
+    this.#write = io.stdout;
   }
 
   stage(artifact: JsonArtifact): void {
@@ -41,31 +35,6 @@ export class Out<JsonArtifact> {
     if (!this.json) {
       this.#write.writeSync(encoder.encode(message));
     }
-  }
-
-  async prompt(message: string): Promise<string | undefined> {
-    this.write(message);
-
-    const chunks: Uint8Array[] = [];
-    const buffer = new Uint8Array(1024);
-
-    while (true) {
-      const count = await this.#input.read(buffer);
-      if (count === null) {
-        break;
-      }
-
-      const chunk = buffer.slice(0, count);
-      const newline = chunk.indexOf(10);
-      if (newline >= 0) {
-        chunks.push(chunk.slice(0, newline));
-        break;
-      }
-      chunks.push(chunk);
-    }
-
-    const value = decoder.decode(concat(chunks)).replace(/\r$/, "");
-    return value.length > 0 ? value : undefined;
   }
 
   flush(): void {
@@ -105,6 +74,19 @@ export function jsonLines(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+export function writeVisibleObject(
+  out: OutputControl,
+  value: Record<string, unknown>,
+  labels: Record<string, string> = {},
+): void {
+  for (const [key, raw] of Object.entries(value)) {
+    if (raw === undefined || raw === null || raw === "") {
+      continue;
+    }
+    out.write(`${labels[key] ?? labelFromKey(key)}: ${renderScalar(raw)}\n`);
+  }
+}
+
 function renderDetail(detail: unknown): string | undefined {
   if (detail === undefined || detail === null || detail === "") {
     return undefined;
@@ -115,13 +97,19 @@ function renderDetail(detail: unknown): string | undefined {
   return jsonLines(detail);
 }
 
-function concat(chunks: Uint8Array[]): Uint8Array {
-  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const result = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
+function renderScalar(value: unknown): string {
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
   }
-  return result;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint") {
+    return String(value);
+  }
+  return jsonLines(value);
+}
+
+function labelFromKey(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[-_]+/g, " ")
+    .toLowerCase();
 }

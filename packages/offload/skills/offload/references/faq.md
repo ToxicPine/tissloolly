@@ -73,10 +73,12 @@ doc): the convenient parts the provisioned image gives you for free aren't autom
 a writable home directory that survives restarts. By default foolfad keeps repos under
 `~/.remote-work`, with `.bare` beside branch-named worktree directories. The box also needs git set
 up with credentials that can read and write the user's repos, and — if you want the open-ended
-`boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and Codex signed in on the
-machine. Fixed-command hand-offs (`foolfad -- <command>`) only need persistent home storage and git;
-the rest is just for the open-ended path. The web proxy and the `http://<machine>.<network>/<port>/` links
-above come from the provisioned setup too, so a bare SSH box won't have them unless you add one.
+`boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and the chosen assistant
+configured through `foolfad-config` (for example Codex or Claude Code). Fixed-command hand-offs
+(`foolfad -- <command>`) only need persistent home storage and GitHub access configured through
+`foolfad-config`; the rest is just for the open-ended path. The web proxy and the
+`http://<machine>.<network>/<port>/` links above come from the provisioned setup too, so a bare SSH
+box won't have them unless you add one.
 
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 

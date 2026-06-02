@@ -38,6 +38,10 @@
           skillsPath = ./packages/foolfad/skills;
         }
         {
+          name = "foolfad-config";
+          skillsPath = ./packages/foolfad-config/skills;
+        }
+        {
           name = "offload";
           skillsPath = ./packages/offload/skills;
         }

@@ -1,13 +1,13 @@
 #!/usr/bin/env -S deno run --allow-run --allow-read
-import { parseCliArgs, usage } from "./lib/args.ts";
+import { type CliMode, parseCliArgs, usage } from "./lib/args.ts";
 import { invalidCliArgs } from "./lib/cli-error.ts";
-import { fail, Out } from "./lib/out.ts";
+import { type CliIo, fail, Out, writeVisibleObject } from "./lib/out.ts";
 import { resolveTransportCommand } from "./lib/transport.ts";
 import * as gh from "./targets/gh/index.ts";
 
 type SuccessEnvelope = {
   ok: true;
-  target: "gh";
+  target: string;
   command: string;
   state: unknown;
 };
@@ -29,9 +29,19 @@ type ErrorEnvelope = {
 
 type JsonEnvelope = SuccessEnvelope | HelpEnvelope | ErrorEnvelope;
 
+const ghStateLabels = {
+  authenticated: "gh authenticated",
+  account: "gh account",
+  host: "gh host",
+  gitUserName: "git user.name",
+  gitUserEmail: "git user.email",
+  credentialHelper: "git credential.helper",
+};
+
 async function main(): Promise<void> {
+  const io: CliIo = { stdin: Deno.stdin, stdout: Deno.stdout, stderr: Deno.stderr };
   const parsed = parseCliArgs(Deno.args);
-  const out = new Out<JsonEnvelope>(parsed.ok ? parsed.value.json : parsed.error.json);
+  const out = new Out<JsonEnvelope>(parsed.ok ? parsed.value.json : parsed.error.json, io);
   if (!parsed.ok) {
     if (parsed.error.type === "help") {
       out.write(`${usage}\n`);
@@ -53,7 +63,7 @@ async function main(): Promise<void> {
   }
 
   const opts = parsed.value;
-  const mode = opts.json ? "json" : "interactive";
+  const mode: CliMode = opts.json ? "json" : "interactive";
   const transport = resolveTransportCommand(opts.transport);
   if (!transport.ok) {
     fail(
@@ -92,8 +102,8 @@ async function main(): Promise<void> {
           );
         }
 
-        const result = await gh.check(ctx);
-        if (!result.ok) {
+        const guardResult = await gh.guard(ctx);
+        if (!guardResult.ok) {
           fail(
             out,
             1,
@@ -101,29 +111,18 @@ async function main(): Promise<void> {
               ok: false,
               target: "gh",
               command,
-              error: result.error,
+              error: guardResult.error,
             },
-            result.error.type,
-            result.error.detail,
+            guardResult.error.type,
+            guardResult.error.detail,
           );
         }
 
-        out.stage({
-          ok: true,
-          target: "gh",
-          command,
-          state: result.value.state,
-        });
-
-        gh.printResult(out, command, result.value.state);
-        out.flush();
-        return;
-      }
-
-      const strictMutation = gh.parseStrictMutationPayload(command, opts.targetArgs);
-      if (strictMutation.ok) {
-        const result = await gh.mutate(ctx, strictMutation.value);
-        if (!result.ok) {
+        if (!guardResult.value.ok) {
+          const error = {
+            type: "guard-failed" as const,
+            detail: guardResult.value.error,
+          };
           fail(
             out,
             1,
@@ -131,10 +130,26 @@ async function main(): Promise<void> {
               ok: false,
               target: "gh",
               command,
-              error: result.error,
+              error,
             },
-            result.error.type,
-            result.error.detail,
+            error.type,
+            error.detail,
+          );
+        }
+
+        const state = await gh.query(ctx);
+        if (!state.ok) {
+          fail(
+            out,
+            1,
+            {
+              ok: false,
+              target: "gh",
+              command,
+              error: state.error,
+            },
+            state.error.type,
+            state.error.detail,
           );
         }
 
@@ -142,15 +157,16 @@ async function main(): Promise<void> {
           ok: true,
           target: "gh",
           command,
-          state: result.value.state,
+          state: state.value,
         });
 
-        gh.printResult(out, command, result.value.state);
+        writeVisibleObject(out, state.value, ghStateLabels);
         out.flush();
         return;
       }
 
-      if (mode !== "interactive") {
+      const mutationInput = gh.parseInput(command, opts.targetArgs);
+      if (!mutationInput.ok) {
         fail(
           out,
           2,
@@ -158,15 +174,15 @@ async function main(): Promise<void> {
             ok: false,
             target: "gh",
             command,
-            error: strictMutation.error,
+            error: mutationInput.error,
           },
-          strictMutation.error.type,
-          strictMutation.error.detail,
+          mutationInput.error.type,
+          mutationInput.error.detail,
         );
       }
 
-      const draft = gh.parseInteractiveMutationDraft(command, opts.targetArgs);
-      if (!draft.ok) {
+      const completePayload = gh.parseCompleteMutationPayload(mutationInput.value);
+      if (!completePayload.ok && mode === "json") {
         fail(
           out,
           2,
@@ -174,14 +190,51 @@ async function main(): Promise<void> {
             ok: false,
             target: "gh",
             command,
-            error: draft.error,
+            error: completePayload.error,
           },
-          draft.error.type,
-          draft.error.detail,
+          completePayload.error.type,
+          completePayload.error.detail,
         );
       }
 
-      const candidatePayload = await gh.completeMutationDraft(draft.value, out);
+      const guardResult = await gh.guard(ctx);
+      if (!guardResult.ok) {
+        fail(
+          out,
+          1,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error: guardResult.error,
+          },
+          guardResult.error.type,
+          guardResult.error.detail,
+        );
+      }
+
+      if (!guardResult.value.ok) {
+        const error = {
+          type: "guard-failed" as const,
+          detail: guardResult.value.error,
+        };
+        fail(
+          out,
+          1,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error,
+          },
+          error.type,
+          error.detail,
+        );
+      }
+
+      const candidatePayload = completePayload.ok
+        ? completePayload
+        : await gh.completeInput(mutationInput.value, io);
       if (!candidatePayload.ok) {
         const error = {
           type: "mutation-planning-failed" as const,
@@ -244,10 +297,11 @@ async function main(): Promise<void> {
         ok: true,
         target: "gh",
         command,
-        state: result.value.state,
+        state: result.value,
       });
 
-      gh.printResult(out, command, result.value.state);
+      out.write("Configured gh.\n");
+      writeVisibleObject(out, result.value, ghStateLabels);
       out.flush();
       return;
     }

@@ -2,9 +2,8 @@
 
 Only do this when there's no computer set up yet — that is, when `FOOLFAD_TRANSPORT` is unset and
 you couldn't find an existing machine. It's a one-time setup.
-It does three things: it rents a small private server, gives that server access to GitHub so it
-can fetch the user's work and send results back, and saves the few settings that let foolfad find
-it later.
+It does three things: it rents a small private server, configures that server for offloaded work,
+and saves the few settings that let foolfad find it later.
 
 This rents a real server and stores some passwords/keys, so check with the user before each step
 that either costs money or saves a secret.
@@ -50,44 +49,30 @@ machine keep its files (projects, caches, credentials) when it restarts.
 Deploy from the config file as shown. Don't use the image-only mode — it writes a bare config
 that leaves out the `/data` volume, and the machine would lose everything every time it restarts.
 
-## 6. Give the machine access to GitHub (do this before any hand-off)
+## 6. Configure the machine for offload work (do this before any hand-off)
 foolfad sends work by pushing it to the project's git remote; the machine then clones/fetches that
 branch, does the work, and (on the open-ended path) pushes the results back. So the machine needs
-git credentials that can read and write the user's repos, plus a name and email for its commits.
-**Cloning a private repo fails without this**, so set it up before the first hand-off.
+GitHub credentials that can read and write the user's repos, plus a name and email for its commits.
+Open-ended hand-offs also need the chosen coding assistant, such as Codex or Claude Code, configured
+on the machine. **Cloning a private repo fails without GitHub setup**, so configure the machine
+before the first hand-off.
 
-You don't need a separate shell for this — run it over the same transport foolfad will use. That's
-the command you'll save as `FOOLFAD_TRANSPORT` in step 7; you can use the adapter directly now, e.g.
-`foolfad-tailscale <machine>.<network>` (or `foolfad-fly --app <app> --machine <machine-id>`).
+Use the `foolfad-config` skill for this setup. It runs `foolfad-configure` over the same transport
+foolfad will use. That's the command you'll save as `FOOLFAD_TRANSPORT` in step 7; you can use the
+adapter directly now, e.g. `foolfad-tailscale <machine>.<network>` or
+`foolfad-fly --app <app> --machine <machine-id>`.
 
-- **Token.** Use a fine-grained GitHub token with contents read/write for the repos that'll be
-  handed off. On Fly, keep it out of band in the machine's secret store so it survives restarts and
-  never touches your shell history — it arrives on the machine as `$GITHUB_TOKEN`:
-  `npx @cardelli/ambit secrets set <machine>.<network> GITHUB_TOKEN=<token>`. (A hand-rolled box has
-  no ambit; deliver the token to the machine some other safe way and reference it below.)
-- **Wire git to use it, over the transport.** A single-quoted heredoc keeps `$GITHUB_TOKEN`
-  unexpanded locally — it's expanded on the machine, where ambit put it. With gh (it sets up git's
-  credential helper for you):
+- **GitHub.** Use `foolfad-configure gh check` first, then `foolfad-configure gh configure` with the
+  git user name and email the machine should use for commits. The `foolfad-config` skill covers
+  token handling and what to report.
 
-  ```bash
-  cat <<'EOF' | foolfad-tailscale <machine>.<network>
-  printf '%s' "$GITHUB_TOKEN" | gh auth login --with-token
-  gh auth setup-git
-  git config --global user.name  "offload runner"
-  git config --global user.email "offload@<machine>.<network>"
-  EOF
-  ```
+- **Coding assistants.** For open-ended work, use the `foolfad-config` skill to configure the
+  assistant target the user wants, such as `codex` or `claude-code`.
+  Fixed-command hand-offs do not need an assistant login.
 
-  If gh isn't on the machine, use plain git instead: `git config --global credential.helper store`
-  and write `https://x-access-token:$GITHUB_TOKEN@github.com` into `~/.git-credentials` (mode 600).
-  A deploy key is another alternative: add the public key to the repo, put the private key in the
-  machine's SSH config.
-- **Check it works**, again over the transport: clone or fetch the target repo, push to a throwaway
-  branch, confirm, then delete it.
-
-These credentials must land on the part of the disk that survives restarts (the provisioned image
-keeps HOME/config on `/data`; a hand-rolled box must arrange the same), or you'll redo this after
-every restart.
+Credentials and assistant auth state must land on the part of the disk that survives restarts (the
+provisioned image keeps HOME/config on `/data`; a hand-rolled box must arrange the same), or you'll
+redo this after every restart.
 
 ## 7. Save the settings foolfad needs
 foolfad reaches the machine through a **transport** — a command that runs work on the remote. You
@@ -113,9 +98,9 @@ Do one trivial hand-off end to end before sending anything important, e.g. from 
 `foolfad -- bash -lc 'echo ok && git rev-parse HEAD'`. Confirm the run branch shows up and the
 machine reached the repo. Once that's clean, go back to the offload skill and send the real task.
 
-If the user plans to use the open-ended path (`boondoggle`), the coding assistant (Codex) also
-needs to be signed in on the machine once — that's a separate one-time step covered in
-`references/codex-on-the-machine.md`. Fixed-command hand-offs don't need it.
+If the user plans to use the open-ended path (`boondoggle`), configure the coding assistant on the
+machine through the `foolfad-config` skill. See `references/assistants-on-the-machine.md` for how the
+offload docs refer to assistant setup.
 
 A note on where secrets go: anything the *machine itself* needs (tokens, keys) goes in
 `ambit secrets set`, kept out of any project. Anything the *work* needs (per-project settings)

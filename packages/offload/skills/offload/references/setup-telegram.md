@@ -89,6 +89,6 @@ is the user's own Telegram ID).
 ## Where these settings live
 
 The bot token, allowed users, and home chat all belong to the *machine* — keep them in
-`ambit secrets set`, out of any project. This is the same rule the provisioning doc uses for the
-GitHub token: machine credentials stay with the machine; project-specific settings stay with the
-project.
+`ambit secrets set`, out of any project. This is the same rule the provisioning doc uses for
+machine credentials: machine credentials stay with the machine; project-specific settings stay with
+the project.
