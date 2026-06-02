@@ -7,16 +7,17 @@ import {
   type CliMode,
   type GhCommand,
   type GhMutationCommand,
-  type ParsedMutationInput,
-  parseGhCommand,
-  parseGhMutationInput,
+  type InteractiveMutationDraft,
+  parseGhCheckArgs,
+  parseGhInteractiveMutationDraft,
+  parseGhMutationPayload,
 } from "./mutation-command-schema.ts";
-import { completeGhMutationInput, type MutationInput } from "./mutation.ts";
-import type { MutationPayload } from "./mutation-schema.ts";
+import { completeGhMutationDraft, type MutationCompletionError } from "./mutation.ts";
+import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 import { type GhState, ghStateSchema } from "./state-schema.ts";
 
 export type { CliMode, GhCommand, GhMutationCommand };
-export { parseGhCommand };
+export { mutationSchema };
 
 export type CommandContext = {
   transport: string;
@@ -75,16 +76,41 @@ async function guarded(ctx: CommandContext): Promise<Result<undefined, CommandEr
   return ok(undefined);
 }
 
-export function parseMutationInput(
-  mode: CliMode,
-  command: GhMutationCommand,
+export function parseStrictMutationPayload(
+  command: string,
   argv: string[],
-): Result<ParsedMutationInput, CliBoundaryError> {
+): Result<MutationPayload, CliBoundaryError> {
   try {
-    return ok(parseGhMutationInput(mode, command, argv));
+    return ok(parseGhMutationPayload(command, argv));
   } catch (error) {
     return err(invalidCliArgsFrom(error));
   }
+}
+
+export function parseCheckInput(argv: string[]): Result<undefined, CliBoundaryError> {
+  try {
+    return ok(parseGhCheckArgs(argv));
+  } catch (error) {
+    return err(invalidCliArgsFrom(error));
+  }
+}
+
+export function parseInteractiveMutationDraft(
+  command: string,
+  argv: string[],
+): Result<InteractiveMutationDraft, CliBoundaryError> {
+  try {
+    return ok(parseGhInteractiveMutationDraft(command, argv));
+  } catch (error) {
+    return err(invalidCliArgsFrom(error));
+  }
+}
+
+export async function completeMutationDraft(
+  draft: InteractiveMutationDraft,
+  tui: Parameters<typeof completeGhMutationDraft>[1],
+): Promise<Result<unknown, MutationCompletionError>> {
+  return await completeGhMutationDraft(draft, tui);
 }
 
 export async function check(ctx: CommandContext): Promise<Result<CommandSuccess, CommandError>> {
@@ -103,19 +129,14 @@ export async function check(ctx: CommandContext): Promise<Result<CommandSuccess,
 
 export async function mutate(
   ctx: CommandContext,
-  input: MutationInput,
+  payload: MutationPayload,
 ): Promise<Result<CommandSuccess, CommandError>> {
   const guardResult = await guarded(ctx);
   if (!guardResult.ok) {
     return guardResult;
   }
 
-  const payload = await completeGhMutationInput(input);
-  if (!payload.ok) {
-    return err({ type: "mutation-planning-failed", detail: payload.error });
-  }
-
-  const state = await applyMutation(ctx, payload.value);
+  const state = await applyMutation(ctx, payload);
   if (!state.ok) {
     return state;
   }

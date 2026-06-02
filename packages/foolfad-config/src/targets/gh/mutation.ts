@@ -1,34 +1,27 @@
-import { err, ok, type Result } from "../../lib/result.ts";
 import type { TuiControl } from "../../lib/out.ts";
-import type { ParsedMutationInput } from "./mutation-command-schema.ts";
-import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
-
-export type MutationInput =
-  | Extract<ParsedMutationInput, { mode: "json" }>
-  | (Extract<ParsedMutationInput, { mode: "interactive" }> & { tui: TuiControl });
+import { err, ok, type Result } from "../../lib/result.ts";
+import type { InteractiveMutationDraft } from "./mutation-command-schema.ts";
 
 export type MutationCompletionError = {
-  type: "missing-input" | "invalid-mutation";
+  type: "missing-input";
   detail: unknown;
 };
 
-export async function completeGhMutationInput(
-  input: MutationInput,
-): Promise<Result<MutationPayload, MutationCompletionError>> {
-  if (input.mode === "json") {
-    return ok(input.payload);
-  }
-
-  switch (input.draft.type) {
+export async function completeGhMutationDraft(
+  draft: InteractiveMutationDraft,
+  tui: TuiControl,
+): Promise<Result<unknown, MutationCompletionError>> {
+  switch (draft.type) {
     case "configure":
-      return await completeConfigureMutation(input);
+      return await completeConfigureMutation(draft, tui);
   }
 }
 
 async function completeConfigureMutation(
-  input: Extract<MutationInput, { mode: "interactive" }>,
-): Promise<Result<MutationPayload, MutationCompletionError>> {
-  const token = input.draft.token ?? await input.tui.prompt("GitHub token for remote gh auth: ");
+  draft: Extract<InteractiveMutationDraft, { type: "configure" }>,
+  tui: TuiControl,
+): Promise<Result<unknown, MutationCompletionError>> {
+  const token = draft.token ?? await tui.prompt("GitHub token for remote gh auth: ");
 
   if (!token) {
     return err({
@@ -38,18 +31,11 @@ async function completeConfigureMutation(
   }
 
   const payload = {
+    type: "configure",
     githubToken: token,
-    gitUserName: input.draft.gitUserName,
-    gitUserEmail: input.draft.gitUserEmail,
+    gitUserName: draft.gitUserName,
+    gitUserEmail: draft.gitUserEmail,
   };
 
-  const parsed = mutationSchema.safeParse(payload);
-  if (!parsed.success) {
-    return err({
-      type: "invalid-mutation",
-      detail: parsed.error.issues,
-    });
-  }
-
-  return ok(parsed.data);
+  return ok(payload);
 }

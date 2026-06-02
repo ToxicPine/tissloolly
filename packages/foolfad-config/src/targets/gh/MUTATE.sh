@@ -2,6 +2,16 @@
 set -euo pipefail
 
 payload="$(cat)"
+mutation_type="$(printf '%s' "$payload" | jq -r '.type')"
+
+case "$mutation_type" in
+  configure) ;;
+  *)
+    printf 'unknown mutation type: %s\n' "$mutation_type" >&2
+    exit 2
+    ;;
+esac
+
 token="$(printf '%s' "$payload" | jq -r '.githubToken')"
 git_user_name="$(printf '%s' "$payload" | jq -r '.gitUserName // empty')"
 git_user_email="$(printf '%s' "$payload" | jq -r '.gitUserEmail // empty')"

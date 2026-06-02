@@ -2,14 +2,13 @@
 import { parseCliArgs, usage } from "./lib/args.ts";
 import { invalidCliArgs } from "./lib/cli-error.ts";
 import { fail, Out } from "./lib/out.ts";
-import type { Result } from "./lib/result.ts";
 import { resolveTransportCommand } from "./lib/transport.ts";
 import * as gh from "./targets/gh/index.ts";
 
 type SuccessEnvelope = {
   ok: true;
   target: "gh";
-  command: gh.GhCommand;
+  command: string;
   state: unknown;
 };
 
@@ -73,21 +72,183 @@ async function main(): Promise<void> {
 
   switch (opts.target) {
     case "gh": {
-      const command = gh.parseGhCommand(opts.command);
-      if (!command) {
+      const ctx: gh.CommandContext = { transport: transport.value };
+      const command = opts.command;
+
+      if (command === "check") {
+        const parsedCheck = gh.parseCheckInput(opts.targetArgs);
+        if (!parsedCheck.ok) {
+          fail(
+            out,
+            2,
+            {
+              ok: false,
+              target: "gh",
+              command,
+              error: parsedCheck.error,
+            },
+            parsedCheck.error.type,
+            parsedCheck.error.detail,
+          );
+        }
+
+        const result = await gh.check(ctx);
+        if (!result.ok) {
+          fail(
+            out,
+            1,
+            {
+              ok: false,
+              target: "gh",
+              command,
+              error: result.error,
+            },
+            result.error.type,
+            result.error.detail,
+          );
+        }
+
+        out.stage({
+          ok: true,
+          target: "gh",
+          command,
+          state: result.value.state,
+        });
+
+        gh.printResult(out, command, result.value.state);
+        out.flush();
+        return;
+      }
+
+      const strictMutation = gh.parseStrictMutationPayload(command, opts.targetArgs);
+      if (strictMutation.ok) {
+        const result = await gh.mutate(ctx, strictMutation.value);
+        if (!result.ok) {
+          fail(
+            out,
+            1,
+            {
+              ok: false,
+              target: "gh",
+              command,
+              error: result.error,
+            },
+            result.error.type,
+            result.error.detail,
+          );
+        }
+
+        out.stage({
+          ok: true,
+          target: "gh",
+          command,
+          state: result.value.state,
+        });
+
+        gh.printResult(out, command, result.value.state);
+        out.flush();
+        return;
+      }
+
+      if (mode !== "interactive") {
         fail(
           out,
           2,
           {
             ok: false,
             target: "gh",
-            command: opts.command,
-            error: invalidCliArgs(`unknown gh command: ${opts.command}`),
+            command,
+            error: strictMutation.error,
           },
-          `unknown gh command: ${opts.command}`,
+          strictMutation.error.type,
+          strictMutation.error.detail,
         );
       }
-      await runGh(out, transport.value, mode, command, opts.targetArgs);
+
+      const draft = gh.parseInteractiveMutationDraft(command, opts.targetArgs);
+      if (!draft.ok) {
+        fail(
+          out,
+          2,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error: draft.error,
+          },
+          draft.error.type,
+          draft.error.detail,
+        );
+      }
+
+      const candidatePayload = await gh.completeMutationDraft(draft.value, out);
+      if (!candidatePayload.ok) {
+        const error = {
+          type: "mutation-planning-failed" as const,
+          detail: candidatePayload.error,
+        };
+        fail(
+          out,
+          1,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error,
+          },
+          error.type,
+          error.detail,
+        );
+      }
+
+      const finalPayload = gh.mutationSchema.safeParse(candidatePayload.value);
+      if (!finalPayload.success) {
+        const error = {
+          type: "mutation-planning-failed" as const,
+          detail: {
+            type: "invalid-mutation",
+            detail: finalPayload.error.issues,
+          },
+        };
+        fail(
+          out,
+          1,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error,
+          },
+          error.type,
+          error.detail,
+        );
+      }
+
+      const result = await gh.mutate(ctx, finalPayload.data);
+      if (!result.ok) {
+        fail(
+          out,
+          1,
+          {
+            ok: false,
+            target: "gh",
+            command,
+            error: result.error,
+          },
+          result.error.type,
+          result.error.detail,
+        );
+      }
+
+      out.stage({
+        ok: true,
+        target: "gh",
+        command,
+        state: result.value.state,
+      });
+
+      gh.printResult(out, command, result.value.state);
+      out.flush();
       return;
     }
     default:
@@ -103,71 +264,6 @@ async function main(): Promise<void> {
         `unknown target: ${opts.target}`,
       );
   }
-}
-
-async function runGh(
-  out: Out<JsonEnvelope>,
-  transport: string,
-  mode: gh.CliMode,
-  command: gh.GhCommand,
-  commandArgs: string[],
-): Promise<void> {
-  const ctx: gh.CommandContext = { transport };
-  let result: Result<gh.CommandSuccess, gh.CommandError>;
-
-  switch (command) {
-    case "check":
-      result = await gh.check(ctx);
-      break;
-    default: {
-      const parsedInput = gh.parseMutationInput(mode, command, commandArgs);
-      if (!parsedInput.ok) {
-        fail(
-          out,
-          2,
-          {
-            ok: false,
-            target: "gh",
-            command,
-            error: parsedInput.error,
-          },
-          parsedInput.error.type,
-          parsedInput.error.detail,
-        );
-      }
-
-      const input = parsedInput.value.mode === "json"
-        ? parsedInput.value
-        : { ...parsedInput.value, tui: out };
-      result = await gh.mutate(ctx, input);
-      break;
-    }
-  }
-
-  if (!result.ok) {
-    fail(
-      out,
-      1,
-      {
-        ok: false,
-        target: "gh",
-        command,
-        error: result.error,
-      },
-      result.error.type,
-      result.error.detail,
-    );
-  }
-
-  out.stage({
-    ok: true,
-    target: "gh",
-    command,
-    state: result.value.state,
-  });
-
-  gh.printResult(out, command, result.value.state);
-  out.flush();
 }
 
 if (import.meta.main) {

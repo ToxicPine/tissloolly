@@ -21,27 +21,7 @@ const completeConfigureDraftSchema = configureDraftSchema.extend({
   token: z.string().min(1),
 }).transform(configureDraftToPayload).pipe(mutationSchema);
 
-type InteractiveMutationDraft = ConfigureMutationDraft;
-
-export type ParsedMutationInput =
-  | {
-    mode: "json";
-    payload: MutationPayload;
-  }
-  | {
-    mode: "interactive";
-    draft: InteractiveMutationDraft;
-  };
-
-export function parseGhCommand(command: string): GhCommand | undefined {
-  switch (command) {
-    case "check":
-    case "configure":
-      return command;
-    default:
-      return undefined;
-  }
-}
+export type InteractiveMutationDraft = ConfigureMutationDraft;
 
 const configureDraftArgvSchema = z.array(z.string()).transform((argv, ctx) => {
   let draft: unknown;
@@ -74,24 +54,21 @@ const configureDraftArgvSchema = z.array(z.string()).transform((argv, ctx) => {
   return draft;
 });
 
-const jsonConfigureArgvSchema = configureDraftArgvSchema
-  .pipe(completeConfigureDraftSchema)
-  .transform((payload) => ({ mode: "json" as const, payload }));
+const strictConfigureArgvSchema = configureDraftArgvSchema.pipe(completeConfigureDraftSchema);
 
-const interactiveConfigureArgvSchema = configureDraftArgvSchema
-  .pipe(configureDraftSchema)
-  .transform((draft) => ({ mode: "interactive" as const, draft }));
+const interactiveConfigureArgvSchema = configureDraftArgvSchema.pipe(configureDraftSchema);
 
-const configureArgvSchema = (mode: CliMode) =>
-  mode === "json" ? jsonConfigureArgvSchema : interactiveConfigureArgvSchema;
+const checkArgvSchema = z.array(z.string()).length(0, "gh check does not accept arguments");
 
-const ghMutationInputArgvSchema = (mode: CliMode) =>
-  z.array(z.string()).min(1, "gh mutation command is required").transform((argv, ctx) => {
+const ghMutationPayloadArgvSchema = z
+  .array(z.string())
+  .min(1, "gh mutation command is required")
+  .transform((argv, ctx) => {
     const [command, ...commandArgs] = argv;
 
     switch (command) {
       case "configure": {
-        const parsed = configureArgvSchema(mode).safeParse(commandArgs);
+        const parsed = strictConfigureArgvSchema.safeParse(commandArgs);
         if (!parsed.success) {
           addIssues(ctx, parsed.error.issues);
           return z.NEVER;
@@ -107,12 +84,47 @@ const ghMutationInputArgvSchema = (mode: CliMode) =>
     }
   });
 
-export function parseGhMutationInput(
-  mode: CliMode,
-  command: GhMutationCommand,
+const ghInteractiveMutationDraftArgvSchema = z
+  .array(z.string())
+  .min(1, "gh mutation command is required")
+  .transform((argv, ctx) => {
+    const [command, ...commandArgs] = argv;
+
+    switch (command) {
+      case "configure": {
+        const parsed = interactiveConfigureArgvSchema.safeParse(commandArgs);
+        if (!parsed.success) {
+          addIssues(ctx, parsed.error.issues);
+          return z.NEVER;
+        }
+        return parsed.data;
+      }
+      default:
+        ctx.addIssue({
+          code: "custom",
+          message: `unknown gh mutation command: ${command}`,
+        });
+        return z.NEVER;
+    }
+  });
+
+export function parseGhCheckArgs(argv: string[]): undefined {
+  checkArgvSchema.parse(argv);
+  return undefined;
+}
+
+export function parseGhMutationPayload(
+  command: string,
   argv: string[],
-): ParsedMutationInput {
-  return ghMutationInputArgvSchema(mode).parse([command, ...argv]);
+): MutationPayload {
+  return ghMutationPayloadArgvSchema.parse([command, ...argv]);
+}
+
+export function parseGhInteractiveMutationDraft(
+  command: string,
+  argv: string[],
+): InteractiveMutationDraft {
+  return ghInteractiveMutationDraftArgvSchema.parse([command, ...argv]);
 }
 
 function addIssues(ctx: z.RefinementCtx, issues: z.core.$ZodIssue[]): void {
@@ -127,6 +139,7 @@ function addIssues(ctx: z.RefinementCtx, issues: z.core.$ZodIssue[]): void {
 
 function configureDraftToPayload(draft: CompleteConfigureMutationDraft): MutationPayload {
   return {
+    type: "configure",
     githubToken: draft.token,
     ...(draft.gitUserName ? { gitUserName: draft.gitUserName } : {}),
     ...(draft.gitUserEmail ? { gitUserEmail: draft.gitUserEmail } : {}),
