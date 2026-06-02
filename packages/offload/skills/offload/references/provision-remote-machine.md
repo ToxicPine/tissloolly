@@ -31,23 +31,20 @@ machine's web links won't work.
 Run `npx @cardelli/ambit status networks`. If `<network>` isn't in the list, create it:
 `npx @cardelli/ambit create <network>`.
 
-## 4. Build the machine's config
-The machine's definition lives in a separate project. Read it straight off its branch instead of
-keeping your own copy:
-`git clone -q --branch opinionated --depth 1 https://github.com/ToxicPine/hermes-ambit /tmp/hambit`
+## 4. Deploy the machine from its GitHub template
+The machine's definition lives in a separate project. Deploy it directly from the branch with
+ambit's template mode:
+`npx @cardelli/ambit deploy <machine>.<network> --template ToxicPine/hermes-ambit@opinionated`
 
-Take `/tmp/hambit/fly.toml` and write a copy to `/tmp/offload-fly.toml:
+Use template mode as shown. Don't use the image-only mode — it writes a bare config that leaves out
+the `/data` volume, and the machine would lose everything every time it restarts.
 
-- Set its `HOSTNAME` to the `<machine>.<network>` name from step 2.
+## 5. Set the machine hostname
+Set `HOSTNAME` after deployment so the machine's web links match the private address:
+`npx @cardelli/ambit secrets set <machine>.<network> HOSTNAME=<machine>.<network>`
 
-Leave everything else as it is — especially the `/data` volume mount. That mount is what lets the
-machine keep its files (projects, caches, credentials) when it restarts.
-
-## 5. Deploy
-`npx @cardelli/ambit deploy <machine>.<network> --config /tmp/offload-fly.toml`
-
-Deploy from the config file as shown. Don't use the image-only mode — it writes a bare config
-that leaves out the `/data` volume, and the machine would lose everything every time it restarts.
+The name used to deploy, the `HOSTNAME` value, and the address you give back at the end must all be
+the exact same text.
 
 ## 6. Configure the machine for offload work (do this before any hand-off)
 foolfad sends work by pushing it to the project's git remote; the machine then clones/fetches that
