@@ -5,8 +5,8 @@ missing=()
 
 require_command() {
   local name="$1"
-  if ! command -v "$name" >/dev/null 2>&1; then
-    missing+=("$name")
+  if ! command -v "${name}" >/dev/null 2>&1; then
+    missing+=("${name}")
   fi
 }
 
@@ -18,23 +18,23 @@ config_home="${XDG_CONFIG_HOME:-${HOME}/.config}"
 gh_config_dir="${config_home}/gh"
 git_config="${HOME}/.gitconfig"
 
-if [[ -e "$gh_config_dir" && ! -w "$gh_config_dir" ]]; then
+if [[ -e "${gh_config_dir}" && ! -w "${gh_config_dir}" ]]; then
   missing+=("gh-config-writable")
-elif [[ ! -e "$gh_config_dir" ]]; then
-  gh_config_parent="$config_home"
-  while [[ ! -e "$gh_config_parent" && "$gh_config_parent" != "/" ]]; do
-    gh_config_parent="$(dirname "$gh_config_parent")"
+elif [[ ! -e "${gh_config_dir}" ]]; then
+  gh_config_parent="${config_home}"
+  while [[ ! -e "${gh_config_parent}" && "${gh_config_parent}" != "/" ]]; do
+    gh_config_parent="$(dirname "${gh_config_parent}")"
   done
-  if [[ ! -d "$gh_config_parent" || ! -w "$gh_config_parent" ]]; then
+  if [[ ! -d "${gh_config_parent}" || ! -w "${gh_config_parent}" ]]; then
     missing+=("gh-config-creatable")
   fi
-elif [[ ! -d "$gh_config_dir" ]]; then
+elif [[ ! -d "${gh_config_dir}" ]]; then
   missing+=("gh-config-creatable")
 fi
 
-if [[ -e "$git_config" && ! -w "$git_config" ]]; then
+if [[ -e "${git_config}" && ! -w "${git_config}" ]]; then
   missing+=("git-config-writable")
-elif [[ ! -e "$git_config" && ! -w "$HOME" ]]; then
+elif [[ ! -e "${git_config}" && ! -w "${HOME}" ]]; then
   missing+=("git-config-creatable")
 fi
 
@@ -46,7 +46,7 @@ fi
 printf '{"ok":false,"error":{"type":"missing-requirements","detail":['
 sep=""
 for name in "${missing[@]}"; do
-  case "$name" in
+  case "${name}" in
     gh|git|jq)
       detail="not found on PATH"
       ;;
@@ -66,7 +66,7 @@ for name in "${missing[@]}"; do
       detail="unavailable"
       ;;
   esac
-  printf '%s{"name":"%s","detail":"%s"}' "$sep" "$name" "$detail"
+  printf '%s{"name":"%s","detail":"%s"}' "${sep}" "${name}" "${detail}"
   sep=","
 done
 printf ']}}\n'

@@ -16,4 +16,13 @@ over the transport, and then ask the remote tool to apply it in the way it alrea
 foolfad-configure --transport "foolfad-ssh box" gh check
 foolfad-configure --transport "foolfad-ssh box" gh configure
 foolfad-configure --json --transport "foolfad-ssh box" gh configure --token "$GITHUB_TOKEN"
+foolfad-configure --transport "foolfad-ssh box" codex check
+foolfad-configure --transport "foolfad-ssh box" codex configure
+foolfad-configure --json --transport "foolfad-ssh box" codex configure --auth-json-file ./auth.json
 ```
+
+The `codex` target configures remote Codex CLI auth by applying the same `auth.json` artifact Codex
+creates for a ChatGPT/device-code login. Interactive configuration runs `codex login --device-auth`
+locally under an isolated scratch `CODEX_HOME`, reads only the scratch auth artifact, removes the
+scratch home, and applies that artifact remotely. It does not use OpenAI enterprise access-token
+handoff, and it does not read or mutate the host's ordinary `~/.codex` credentials.

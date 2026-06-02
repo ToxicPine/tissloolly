@@ -62,8 +62,9 @@ pkgs.stdenvNoCC.mkDerivation {
       --add-flags "--config $out/share/foolfad-config/deno.json" \
       --add-flags "--lock $out/share/foolfad-config/deno.lock" \
       --add-flags "--allow-run" \
-      --add-flags "--allow-read=$out/share/foolfad-config" \
-      --add-flags "--allow-env=FOOLFAD_CONFIG_TRANSPORT" \
+      --add-flags "--allow-read" \
+      --add-flags "--allow-write" \
+      --add-flags "--allow-env=FOOLFAD_CONFIG_TRANSPORT,HOME" \
       --add-flags "$out/share/foolfad-config/src/main.ts"
 
     runHook postInstall

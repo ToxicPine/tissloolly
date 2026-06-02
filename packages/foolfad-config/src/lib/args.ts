@@ -32,10 +32,13 @@ Environment:
 Targets:
   gh check
   gh configure [--token TOKEN] [--git-user-name NAME] [--git-user-email EMAIL]
+  codex check
+  codex configure [--auth-json-file PATH]
 
 Examples:
   foolfad-configure --transport "foolfad-ssh box" gh check
   foolfad-configure --json --transport "foolfad-ssh box" gh configure --token "$GITHUB_TOKEN"
+  foolfad-configure --transport "foolfad-ssh box" codex check
 `;
 
 export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
