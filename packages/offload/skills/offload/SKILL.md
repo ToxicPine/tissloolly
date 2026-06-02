@@ -55,11 +55,12 @@ exists.
 **Nix must be installed on the user's local machine.** Offloading works cleanly only when the target
 machine can rebuild the project environment from `flake.nix`. That keeps dependencies and behavior
 consistent after the work moves. If `nix` is missing, point the user at
-https://install.determinate.systems and offer to run the installer. The only local tools needed are
-`foolfad` and its transport (`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`). `boondoggle` and
-`vusperize` live on the target machine. If `foolfad` or its transport is not installed locally, run
-from source, e.g. `nix run github:ToxicPine/tissloolly#foolfad -- ...` (the transports are in the
-`foolfad-transports` package).
+https://install.determinate.systems and offer to run the installer. Prefer Nix-run invocations for
+the tissloolly tools in this workflow: `nix run github:ToxicPine/tissloolly#foolfad -- -- ...` locally,
+and `nix run github:ToxicPine/tissloolly#boondoggle` or
+`nix run github:ToxicPine/tissloolly#vusperize -- ...` on the target when those commands are not
+already installed. Transport adapters are in `foolfad-transports`; use
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale ...` when needed.
 
 **Check the flake offload marker before doing anything with the flake.** Use `nix flake show` (or
 `nix flake show --json`) to look for top-level `x-offload`. Treat it as a hint, not a guarantee:
@@ -93,7 +94,9 @@ secret the devShell cannot provide must not travel as plaintext. Offer to encryp
 `sops-nix`. Ask before changing anything.
 
 **Find the machine.** `foolfad` reaches it through `FOOLFAD_TRANSPORT` (for example
-`foolfad-ssh box.lab`, `foolfad-tailscale box.lab`, or `foolfad-fly --app ... --machine ...`).
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-ssh box.lab`,
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale box.lab`, or
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-fly --app ... --machine ...`).
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
 - If not, check whether a machine already exists but is not selected. The provisioning doc shows how
@@ -105,11 +108,12 @@ secret the devShell cannot provide must not travel as plaintext. Offer to encryp
 
 **Hand it off.**
 
-- One exact command: `foolfad -- <command>`. This runs on the remote branch. To return changes, the
-  command must commit and push them itself.
-- Open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. The configured
-  assistant works until done, then pushes the result back as a branch. This requires an assistant,
-  such as Codex or Claude Code, configured through `foolfad-config`
+- One exact command: `nix run github:ToxicPine/tissloolly#foolfad -- -- <command>`. This runs on the
+  remote branch. To return changes, the command must commit and push them itself.
+- Open-ended task:
+  `nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'printf "%s" "<task>" | nix run github:ToxicPine/tissloolly#boondoggle'`.
+  The configured assistant works until done, then pushes the result back as a branch. This requires
+  an assistant, such as Codex or Claude Code, configured through `foolfad-config`
   (`references/assistants-on-the-machine.md`).
 
 The work starts inside the project directory on the target machine, so the environment (`devShell`,

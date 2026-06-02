@@ -61,13 +61,16 @@ on the machine. **Private repo cloning fails without GitHub setup**, so configur
 first hand-off.
 
 Use the `foolfad-config` skill for this setup. It runs `foolfad-configure` over the same transport
-`foolfad` will use. This is the command you will save as `FOOLFAD_TRANSPORT` in step 7. You can use
-the adapter directly now, e.g. `foolfad-tailscale <machine>.<network>` or
-`foolfad-fly --app <app> --machine <machine-id>`.
+`foolfad` will use. This is the command you will save as `FOOLFAD_TRANSPORT` in step 7. Use
+`nix shell github:ToxicPine/tissloolly#foolfad-config -c foolfad-configure ...` for the local
+configuration command.
 
-- **GitHub.** Use `foolfad-configure gh check` first, then `foolfad-configure gh configure` with the
-  git user name and email the machine should use for commits. The `foolfad-config` skill covers
-  token handling and what to report.
+- **GitHub.** Use
+  `nix shell github:ToxicPine/tissloolly#foolfad-config -c foolfad-configure --transport "$FOOLFAD_TRANSPORT" gh check`
+  first, then
+  `nix shell github:ToxicPine/tissloolly#foolfad-config -c foolfad-configure --transport "$FOOLFAD_TRANSPORT" gh configure`
+  with the git user name and email the machine should use for commits. The `foolfad-config` skill
+  covers token handling and what to report.
 
 - **Coding assistants.** For open-ended work, use the `foolfad-config` skill to configure the
   assistant target the user wants, such as `codex` or `claude-code`. Fixed-command hand-offs do not
@@ -83,23 +86,25 @@ how to connect:
 
 - **Tailscale SSH (recommended here):** the machine is already on the user's private Tailscale network
   as `<machine>.<network>`, so set
-  `FOOLFAD_TRANSPORT='foolfad-tailscale <machine>.<network>'` (for example
-  `foolfad-tailscale box.lab`). Plain SSH works the same way with `foolfad-ssh <machine>.<network>`
-  if the user prefers, or for a machine reachable over regular SSH.
+  `FOOLFAD_TRANSPORT='nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale <machine>.<network>'`.
+  Plain SSH works the same way with
+  `nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-ssh <machine>.<network>` if
+  the user prefers, or for a machine reachable over regular SSH.
 - **Fly:** `nix run github:ToxicPine/ambit -- status app <machine>.<network> --json` — note the Fly app name and
-  the machine id, then set `FOOLFAD_TRANSPORT='foolfad-fly --app <app> --machine <machine-id>'`.
+  the machine id, then set
+  `FOOLFAD_TRANSPORT='nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-fly --app <app> --machine <machine-id>'`.
 
-Whichever transport you choose, the adapter (`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`)
-must be on the user's `PATH`. Save `FOOLFAD_TRANSPORT` somewhere their shells load it, such as a
-shell profile, direnv, or a secrets manager.
+Save `FOOLFAD_TRANSPORT` somewhere the user's shells load it, such as a shell profile, direnv, or a
+secrets manager.
 
 - If the project's git remote isn't the one the machine should pull from, also set
   `FOOLFAD_REPO_URL` (the URL to push to and clone from) and/or `FOOLFAD_REMOTE_NAME`.
 
 ## 8. Try a tiny run before anything real
 Do one trivial hand-off end to end before sending important work, e.g. from a test repo:
-`foolfad -- bash -lc 'echo ok && git rev-parse HEAD'`. Confirm the run branch shows up and the
-machine reached the repo. Once that's clean, go back to the offload skill and send the real task.
+`nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'echo ok && git rev-parse HEAD'`.
+Confirm the run branch shows up and the machine reached the repo. Once that's clean, go back to the
+offload skill and send the real task.
 
 If the user plans to use the open-ended path (`boondoggle`), configure the coding assistant on the
 machine through the `foolfad-config` skill. See `references/assistants-on-the-machine.md` for how the

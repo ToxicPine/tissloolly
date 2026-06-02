@@ -58,10 +58,12 @@ No. The machine sits on a private network that only the user's devices can reach
 
 ## "Can I point this at my own server instead of Fly?"
 
-Yes. `foolfad` reaches the machine through a transport command set in `FOOLFAD_TRANSPORT`:
-`foolfad-tailscale <host>`, `foolfad-ssh <host>`, or
-`foolfad-fly --app ... --machine ...`. Any box reachable over SSH or Tailscale SSH can be the
-target. Set the transport to point at it.
+Yes. `foolfad` reaches the machine through a transport command set in `FOOLFAD_TRANSPORT`, usually
+with the transport adapters from Nix:
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale <host>`,
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-ssh <host>`, or
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-fly --app ... --machine ...`.
+Any box reachable over SSH or Tailscale SSH can be the target. Set the transport to point at it.
 
 A hand-rolled box needs the pieces the provisioned image normally supplies:
 
@@ -74,7 +76,8 @@ A hand-rolled box needs the pieces the provisioned image normally supplies:
 - For web URLs like `http://<machine>.<network>/<port>/`, a proxy equivalent to the provisioned
   setup.
 
-Fixed-command hand-offs (`foolfad -- <command>`) only need persistent home storage and GitHub access.
+Fixed-command hand-offs (`nix run github:ToxicPine/tissloolly#foolfad -- -- <command>`) only need
+persistent home storage and GitHub access.
 
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 

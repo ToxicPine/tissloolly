@@ -2,8 +2,8 @@
 
 This is optional. Do it once per machine when the user wants either feature:
 
-- **Progress pings while offloaded work runs.** `vusperize --deliver telegram` sends updates to a
-  Telegram chat.
+- **Progress pings while offloaded work runs.** `nix run github:ToxicPine/tissloolly#vusperize -- --deliver telegram`
+  sends updates to a Telegram chat.
 - **Phone access to the agent on the machine.** The user can message the Telegram bot instead of
   staying at a terminal.
 
@@ -77,7 +77,7 @@ If it stays silent, check the common causes:
 Once Telegram is connected, wrap a long remote command with `vusperize`:
 
 ```bash
-foolfad -- bash -lc 'vusperize --deliver telegram -- <long command>'
+nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'nix run github:ToxicPine/tissloolly#vusperize -- --deliver telegram -- <long command>'
 ```
 
 If `TELEGRAM_HOME_CHANNEL` is set, pings go there automatically. To send them to a specific chat,

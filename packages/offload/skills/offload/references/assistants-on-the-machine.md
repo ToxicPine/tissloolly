@@ -5,8 +5,8 @@ may be **Codex** or **Claude Code**, depending on machine and user setup. Config
 the target once before using this path. If it is not configured, open-ended runs fail before they
 start.
 
-A fixed-command hand-off (`foolfad -- <cmd>`) does not need assistant setup. Only the open-ended
-"let it work toward a goal" path does.
+A fixed-command hand-off (`nix run github:ToxicPine/tissloolly#foolfad -- -- <cmd>`) does not need
+assistant setup. Only the open-ended "let it work toward a goal" path does.
 
 Assistant setup is also what lets the user **check in on a run and steer it** while it is running.
 
@@ -24,7 +24,7 @@ Setup is saved on the machine's persistent disk, so it should be one-time work f
 After assistant setup, open-ended hand-offs will work:
 
 ```bash
-foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'
+nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'printf "%s" "<task>" | nix run github:ToxicPine/tissloolly#boondoggle'
 ```
 
 ## Checking in and steering a run from your phone
