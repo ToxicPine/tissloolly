@@ -1,23 +1,20 @@
 # Offload FAQ
 
-Short answers to things people ask after they've handed work off. Keep your replies in plain
-language — explain the idea, don't list jargon.
+Short answers to common follow-up questions. Keep replies plain: explain the idea, avoid jargon.
 
 ## "How do I see the dev server (or web page) of something I offloaded?"
 
-The work is running on another computer, so its dev server is running over there, not on the
-user's own machine. They can't just open `localhost:3000` — that would point at their own machine,
-where nothing is running.
+The work is running on another computer, so its dev server is running there, not on the user's local
+machine. `localhost:3000` points at the user's own machine, where nothing is running.
 
-The other computer has a small built-in web proxy that lets the user reach anything running on it
-through a browser. The trick is: **take the port number and put it at the front of the path,
-after the machine's address.** So a dev server on port `3000` over there becomes:
+The target machine has a small web proxy that lets the user reach services running on it. Put the
+port number at the start of the path, after the machine address. A dev server on port `3000` becomes:
 
 ```text
 http://<machine>.<network>/3000/
 ```
 
-Anything after the port — paths, query strings, `#` anchors — goes right after it:
+Anything after the port, such as paths, query strings, or `#` anchors, goes after it:
 
 ```text
 dev server at localhost:3000/         ->  http://<machine>.<network>/3000/
@@ -25,68 +22,67 @@ dev server at localhost:5173/app      ->  http://<machine>.<network>/5173/app
 dev server at localhost:8000/a?x=1    ->  http://<machine>.<network>/8000/a?x=1
 ```
 
-`<machine>.<network>` is the address of the computer the work was sent to (the same one this skill
-reported back, e.g. `box.lab`). Refresh, links, back/forward, and live connections (websockets)
-all work through it, so it behaves like the real dev server.
+`<machine>.<network>` is the address of the target machine, the same one this skill reported back
+(for example `box.lab`). Refresh, links, back/forward, and live connections (websockets) work through
+it, so it behaves like the real dev server.
 
-If you're not sure of the exact URL, the agent running on the other computer can work it out for
-you: its `nestail-service-urls` skill turns a port into the right link, and `foolfad-target` can
-tell you which port your run is listening on.
+If the exact URL is unclear, the agent on the target machine can work it out. Its
+`nestail-service-urls` skill turns a port into the right link, and `foolfad-target` can tell which
+port the run is listening on.
 
 ## "I opened the address and nothing loads."
 
-A few usual reasons, easiest to check first:
+Check these common causes first:
 
 - **The work has to actually be running a server.** The proxy only shows something if a dev server
-  is up and listening on that port over there. If the task finished, or never started a server,
-  there's nothing to show. Check whether it's still running (the `foolfad-target` skill can look).
+  is up and listening on that port on the target machine. If the task finished, or never started a
+  server, there is nothing to show. Check whether it is still running; `foolfad-target` can look.
 - **You have to be on the private network.** The machine's address only works from the user's own
-  devices — the ones joined to the private network (Tailscale) the machine lives on. From a device
-  that isn't joined, the address simply won't resolve. This is on purpose: it keeps the machine
-  private.
-- **Right port, in the path.** Double-check the port number, and that it's in the path
-  (`/3000/`), not stuck onto the address like `:3000`.
+  devices, the ones joined to the private network (Tailscale) the machine lives on. From a device
+  that is not joined, the address will not resolve. This keeps the machine private.
+- **Right port, in the path.** Double-check the port number, and that it is in the path (`/3000/`),
+  not attached to the address like `:3000`.
 - **The server has to listen on the machine itself.** Most dev servers do by default. If one was
-  told to bind to a specific outside address, it may not be reachable through the proxy — having
-  it listen on localhost/`0.0.0.0` on the machine fixes that.
+  told to bind to a specific outside address, it may not be reachable through the proxy. Have it
+  listen on localhost or `0.0.0.0` on the machine.
 
 ## "Where do I find the machine's address?"
 
-It's the `<machine>.<network>` name — the address this skill reported when it sent the work off
-(for example `box.lab`). If you've lost it, the agent on the machine can read it back: it's the
-machine's own hostname.
+It is the `<machine>.<network>` name, such as `box.lab`. This skill reported it when it sent the
+work off. If it is lost, the agent on the machine can read it back from the machine hostname.
 
 ## "Can anyone else see my dev server?"
 
-No. The machine sits on a private network that only the user's own devices can reach, so the
-`http://<machine>.<network>/...` links work for them and no one else. They're not public URLs.
+No. The machine sits on a private network that only the user's devices can reach. The
+`http://<machine>.<network>/...` links are not public URLs.
 
 ## "Can I point this at my own server instead of Fly?"
 
-Yes. foolfad reaches the machine through a transport command, and you set which one with
-`FOOLFAD_TRANSPORT` — `foolfad-tailscale <host>`, `foolfad-ssh <host>`, or
-`foolfad-fly --app … --machine …`. So any box you can reach over SSH (or Tailscale SSH) can be the
-target; just set the transport to point at it.
+Yes. `foolfad` reaches the machine through a transport command set in `FOOLFAD_TRANSPORT`:
+`foolfad-tailscale <host>`, `foolfad-ssh <host>`, or
+`foolfad-fly --app ... --machine ...`. Any box reachable over SSH or Tailscale SSH can be the
+target. Set the transport to point at it.
 
-One caveat for a hand-rolled box (one you set up yourself rather than through the provisioning
-doc): the convenient parts the provisioned image gives you for free aren't automatic. The box needs
-a writable home directory that survives restarts. By default foolfad keeps repos under
-`~/.remote-work`, with `.bare` beside branch-named worktree directories. The box also needs git set
-up with credentials that can read and write the user's repos, and — if you want the open-ended
-`boondoggle` path or progress pings — `boondoggle`/`vusperize` installed and the chosen assistant
-configured through `foolfad-config` (for example Codex or Claude Code). Fixed-command hand-offs
-(`foolfad -- <command>`) only need persistent home storage and GitHub access configured through
-`foolfad-config`; the rest is just for the open-ended path. The web proxy and the
-`http://<machine>.<network>/<port>/` links above come from the provisioned setup too, so a bare SSH
-box won't have them unless you add one.
+A hand-rolled box needs the pieces the provisioned image normally supplies:
+
+- A writable home directory that survives restarts.
+- Repo storage. By default `foolfad` keeps repos under `~/.remote-work`, with `.bare` beside
+  branch-named worktree directories.
+- Git credentials that can read and write the user's repos, configured through `foolfad-config`.
+- For open-ended `boondoggle` work or progress pings, `boondoggle` and `vusperize` installed, plus
+  the chosen assistant configured through `foolfad-config`.
+- For web URLs like `http://<machine>.<network>/<port>/`, a proxy equivalent to the provisioned
+  setup.
+
+Fixed-command hand-offs (`foolfad -- <command>`) only need persistent home storage and GitHub access.
 
 ## "How do I check on the work itself — progress, logs, whether it's done?"
 
-That's a different question from viewing a web page, and it's handled by other skills:
-`foolfad-target` for the state of a handed-off run on the machine, and `boondoggle-runs` for an
-open-ended (coding-assistant) run's progress and when it finishes.
+That is separate from viewing a web page. Other skills handle it: `foolfad-target` for the state of
+a handed-off run on the machine, and `boondoggle-runs` for an open-ended coding-assistant run's
+progress and completion.
 
 Those are target-side skills. If the user is already talking to an agent on the machine, for
 example through Telegram, that agent should use them directly. If you only have the local machine,
-use the saved `FOOLFAD_TRANSPORT` to ask the target-side agent/Codex to answer from over there and
-print the result back locally. The finished code still comes back as the branch this skill reported.
+use the saved `FOOLFAD_TRANSPORT` to ask the target-side agent or Codex to answer from the target and
+print the result locally. Finished code still comes back as the branch this skill reported.

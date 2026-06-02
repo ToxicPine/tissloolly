@@ -1,13 +1,13 @@
 ---
 name: boondoggle
-description: Use for launching long-running LLM tasks that require persistent background work until a given goal or requirements are fulfilled. This skill initiates a new Codex goal run with `boondoggle` from a prompt on stdin.
+description: Use when launching a persistent Codex goal run with `boondoggle` from a prompt on stdin.
 ---
 
 # Boondoggle Workflow
 
-Use `boondoggle` when the user wants to hand a prompt to Codex as a goal and let it run from the current working tree.
+Use `boondoggle` when the user wants to hand a prompt to Codex as a goal and let it run from a chosen working tree.
 
-Boondoggle reads the prompt from stdin.
+Boondoggle reads the full prompt from stdin. Empty prompts fail.
 
 ```bash
 printf '%s\n' 'Implement the requested change and run tests' | boondoggle
@@ -21,7 +21,7 @@ ROOT=/path/to/repo printf '%s\n' 'Run the migration checks' | boondoggle
 
 ## Behavior
 
-Boondoggle starts a Codex app-server session, creates a goal from the stdin prompt, and resumes the thread in the chosen working directory with:
+Boondoggle starts `codex app-server`, creates a thread in the selected working directory, sets the stdin prompt as the active goal, and resumes the thread with:
 
 ```text
 model: gpt-5.5
@@ -29,15 +29,15 @@ approvalPolicy: never
 sandbox: danger-full-access
 ```
 
-It prints useful progress events from Codex, including goal and turn status updates.
+It prints progress events from Codex, including thread id, goal status, turn start/completion, and selected message text.
 
 ## Useful Environment
 
-- `ROOT` selects the working directory. It defaults to `$PWD`.
+- `ROOT` selects the Codex working directory. It defaults to `$PWD`.
 - `BOONDOGGLE_MODEL` overrides the thread model. It defaults to `gpt-5.5`.
-- `BOONDOGGLE_APPROVAL_POLICY` overrides the approval policy. It defaults to `never`.
+- `BOONDOGGLE_APPROVAL_POLICY` overrides the approval policy. It defaults to `never`; `--ask-for-approval` is accepted as an alias.
 - `BOONDOGGLE_SANDBOX` overrides the thread sandbox. It defaults to `danger-full-access`.
-- `BOONDOGGLE_EFFORT` sets the reasoning effort when provided.
+- `BOONDOGGLE_EFFORT` sets the reasoning effort when provided; `--reasoning-effort` is accepted as an alias.
 - `BOONDOGGLE_PERSONALITY` sets the Codex personality when provided.
 - `BOONDOGGLE_SUMMARY` sets the summary preference when provided.
 - `BOONDOGGLE_THREAD_CONFIG_JSON` merges an additional JSON object into the `thread/start` and `thread/resume` params. Values in this object override the named defaults.
@@ -48,4 +48,10 @@ It prints useful progress events from Codex, including goal and turn status upda
 
 ## Reporting
 
-After launching Boondoggle, report the working root and what prompt or task was started. If the user later asks about progress, use the `boondoggle-runs` skill when it is available.
+After launching Boondoggle, report:
+
+- The working root.
+- The task or prompt summary.
+- The thread id if Boondoggle printed one.
+
+If the user later asks about progress, use the `boondoggle-runs` skill when it is available.

@@ -1,13 +1,13 @@
 ---
 name: boondoggle-runs
-description: Use for inspecting persistent background Codex goal runs launched by Boondoggle from a prompt on stdin. This skill helps you check the current state, output, completion, or worktree activity of an ongoing or completed Boondoggle long-running LLM task.
+description: Use when inspecting state, output, completion, or worktree activity for Codex goal runs launched by Boondoggle.
 ---
 
 # Boondoggle Runs
 
-Use this skill when the user asks about a boondoggle or a Codex goal run launched by Boondoggle.
+Use this skill when the user asks about a Boondoggle run or a Codex goal run launched by Boondoggle.
 
-Boondoggle runs a Codex goal from a prompt on stdin. It is often launched through Foolfad, so the worktree and branch may follow the Foolfad layout:
+Boondoggle runs a Codex goal from a prompt on stdin. It is often launched through Foolfad, so the worktree and branch may use the Foolfad layout:
 
 ```text
 ~/.remote-work/repos/<repo-path>/foolfad-<run-id>
@@ -31,13 +31,13 @@ find "$worktree" -xdev -type f -printf '%T@ %p\n' 2>/dev/null | sort -nr | head 
 
 ## Completion Signals
 
-Boondoggle commits and pushes worktree changes when configured to publish goal success, goal failure, or unexpected exit. Its default commit subject starts with:
+Boondoggle can commit and push worktree changes on goal success, goal failure, or unexpected exit. By default, publish is enabled for all three outcomes. The default commit subject starts with:
 
 ```text
 Codex Goal Worktree State: status=<status>
 ```
 
-The commit body records prompt length, status, exit status, Codex thread id, and UTC time.
+The commit body records prompt length, run status, exit status, Codex thread id, and UTC time.
 
 Use these git checks to identify the latest published outcome:
 
@@ -55,5 +55,4 @@ Tell the user what you can verify:
 - Latest Boondoggle status commit if present.
 - Recent file activity.
 
-Boondoggle tracks runs through git commits and live processes, not pidfiles, so report what those
-show rather than looking for a status or pid file.
+Boondoggle tracks runs through git commits and live processes, not pidfiles. Report what those signals show instead of looking for a status or pid file.

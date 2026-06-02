@@ -1,30 +1,27 @@
-# Connecting the machine to Telegram (first-time setup)
+# Connect the machine to Telegram
 
-This is optional, and you only do it once per machine. Set it up when the user wants either of
-these:
+This is optional. Do it once per machine when the user wants either feature:
 
-- **Progress pings while offloaded work runs** — the updates vusperize can send (`--deliver
-  telegram`) land in a Telegram chat.
-- **To chat with the agent on the machine from their phone** — message it on Telegram instead of
-  being at a terminal.
+- **Progress pings while offloaded work runs.** `vusperize --deliver telegram` sends updates to a
+  Telegram chat.
+- **Phone access to the agent on the machine.** The user can message the Telegram bot instead of
+  staying at a terminal.
 
-Telegram itself is free. The only secret involved is the bot's token, which is a password — treat
-it carefully and confirm with the user before saving it.
+Telegram is free. The bot token is a password. Treat it as secret and confirm before saving it.
 
-## The idea, in plain terms
+## Plain Model
 
-A "Telegram bot" is just a second Telegram account that a program controls instead of a person.
-You create one, and it gives you a long password called a **token**. You hand that token to the
-machine, and tell the machine which Telegram users are allowed to talk to it. After that, the
-agent running on the machine can send and receive Telegram messages — so messaging the bot is
-messaging the agent, and progress pings show up as messages from the bot.
+A Telegram bot is a Telegram account controlled by a program. The user creates the bot and receives
+a long password called a **token**. Save that token on the machine, then list the Telegram user IDs
+allowed to talk to it. After that, messaging the bot messages the agent, and progress pings appear
+as messages from the bot.
 
-Nothing here touches the user's normal Telegram account beyond them chatting with their own new
+This does not change the user's normal Telegram account. It only lets that account chat with the new
 bot.
 
 ## 1. Make the bot
 
-In Telegram, the user creates the bot by talking to Telegram's official bot-maker:
+The user creates the bot by talking to Telegram's official bot maker:
 
 1. Open Telegram and search for **@BotFather** (or open https://t.me/BotFather).
 2. Send `/newbot`.
@@ -32,33 +29,33 @@ In Telegram, the user creates the bot by talking to Telegram's official bot-make
 4. Pick a username — it has to be unique and end in `bot` (e.g. `my_offload_bot`).
 5. BotFather replies with the **token**, which looks like `123456789:ABCdef...`.
 
-That token is the bot's password. If it ever leaks, the user can revoke it with `/revoke` in
-BotFather and make a new one.
+The token is the bot's password. If it leaks, the user can revoke it with `/revoke` in BotFather and
+make a new one.
 
 ## 2. Get the user's Telegram ID
 
-The machine decides who's allowed to talk to the bot by numeric Telegram user ID — a number like
-`123456789`, **not** the `@username`. The easiest way to find it: in Telegram, message
+The machine allows users by numeric Telegram user ID, such as `123456789`, **not** by `@username`.
+The easiest way to find it: in Telegram, message
 **@userinfobot** (https://t.me/userinfobot) and it replies with the ID. Save that number.
 
 If more than one person should be allowed, collect each of their IDs.
 
 ## 3. Give the machine the token and the allowed users
 
-These are secrets the *machine itself* needs, so they go in the machine's secret store — never in
-a project. Using ambit (the same tool from the provisioning steps):
+These are secrets the *machine itself* needs, so store them in the machine's secret store, never in
+a project. Using `ambit`:
 
 ```bash
 npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_BOT_TOKEN=<token>
 npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_ALLOWED_USERS=<id>
 ```
 
-`TELEGRAM_ALLOWED_USERS` takes a comma-separated list if there's more than one person, e.g.
+`TELEGRAM_ALLOWED_USERS` takes a comma-separated list when more than one person is allowed, e.g.
 `111111111,222222222`.
 
-Optionally, also set a "home" chat — the chat the agent sends to when *it* starts a message
-(scheduled results, and the destination for vusperize pings if you don't pass one each time). For
-a normal one-on-one chat with the bot, this is the same number as the user's own ID:
+Optionally, set a "home" chat. This is where the agent sends messages it starts, such as scheduled
+results or `vusperize` pings when no chat is passed. For a normal one-on-one chat with the bot, use
+the user's Telegram ID:
 
 ```bash
 npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_HOME_CHANNEL=<id>
@@ -66,29 +63,29 @@ npx @cardelli/ambit secrets set <machine>.<network> TELEGRAM_HOME_CHANNEL=<id>
 
 ## 4. Check it works
 
-The agent on the machine picks up these settings when its gateway runs. Have the user open
-Telegram, find their new bot (by the username from step 1), and send it a message — it should
-answer within a few seconds. If it stays silent, the usual causes are a mistyped token or the
-user's ID not being in `TELEGRAM_ALLOWED_USERS`. (If the gateway was already running, it may need
-to be restarted to pick up newly added secrets — restart the machine if a message goes
-unanswered.)
+The agent on the machine reads these settings when its gateway runs. Have the user open Telegram,
+find the new bot by username, and send it a message. It should answer within a few seconds.
+
+If it stays silent, check the common causes:
+
+- The token was mistyped.
+- The user's numeric ID is missing from `TELEGRAM_ALLOWED_USERS`.
+- The gateway was already running and has not read the new secrets yet. Restart the machine if needed.
 
 ## Using it for offload progress pings
 
-Once Telegram is connected, wrap a long remote command with vusperize and send updates to
-Telegram:
+Once Telegram is connected, wrap a long remote command with `vusperize`:
 
 ```bash
-foolfad -- bash -lc 'vusperize --deliver telegram -- <your command that calls tofiny ...>'
+foolfad -- bash -lc 'vusperize --deliver telegram -- <long command>'
 ```
 
-If you set `TELEGRAM_HOME_CHANNEL` above, the pings go there automatically. To send them to a
-specific chat instead, add `--deliver-chat-id <id>` (for a one-on-one chat with the bot, that id
-is the user's own Telegram ID).
+If `TELEGRAM_HOME_CHANNEL` is set, pings go there automatically. To send them to a specific chat,
+add `--deliver-chat-id <id>`. For a one-on-one chat with the bot, that ID is the user's own Telegram
+ID.
 
 ## Where these settings live
 
-The bot token, allowed users, and home chat all belong to the *machine* — keep them in
-`ambit secrets set`, out of any project. This is the same rule the provisioning doc uses for
-machine credentials: machine credentials stay with the machine; project-specific settings stay with
-the project.
+The bot token, allowed users, and home chat belong to the *machine*. Keep them in
+`ambit secrets set`, out of every project. Machine credentials stay with the machine.
+Project-specific settings stay with the project.

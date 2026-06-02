@@ -1,32 +1,31 @@
 ---
 name: foolfad-target
-description: For checking long-running tasks the user dispatched to this machine through Foolfad, including Boondoggle runs launched that way. Use when the user asks about dispatched task status, local worktree state, task logs or output, whether a related command is still alive, or what branch/worktree a dispatched run used.
+description: Use this to inspect long-running tasks the user dispatched to this machine through Foolfad. This is relevant when asks about dispatched task status, dispatched task logs or output, whether a related command is still alive, or what branch/worktree a dispatched run used.
 ---
 
 # Foolfad Target Task State
 
-You are supervising the machine where the dispatched task runs. Inspect local files and processes
-directly, then answer the user with the concrete status you found.
+You are on the machine where the dispatched command runs. Inspect local files and processes directly, then answer with the concrete state you found.
 
 Foolfad launches a command on this machine using a bare repo and worktree layout.
-The local branch is pushed, then a run branch is pushed as:
+The source branch is pushed first, then the run branch is pushed as:
 
 ```text
 foolfad/<run-id>
 ```
 
-The remote defaults are:
+Default target paths are:
 
 ```text
 ~/.remote-work/repos/<repo-path>/.bare
 ~/.remote-work/repos/<repo-path>/foolfad-<run-id>
 ```
 
-Useful environment names are `FOOLFAD_REPO_PATH`, `FOOLFAD_REMOTE_ROOT`, `FOOLFAD_WORKTREE_DIR`, and `FOOLFAD_RUN_BRANCH`.
+Useful environment names: `FOOLFAD_REPO_PATH`, `FOOLFAD_REMOTE_ROOT`, `FOOLFAD_WORKTREE_DIR`, and `FOOLFAD_RUN_BRANCH`.
 
 ## Inspect Local State
 
-List recent Foolfad worktrees:
+List recent Foolfad worktrees under the remote root:
 
 ```bash
 root="${FOOLFAD_REMOTE_ROOT:-${HOME}/.remote-work}"
@@ -35,7 +34,7 @@ find "$root/repos" -path '*/.git' -not -path '*/.bare/*' -printf '%T@ %h\n' 2>/d
   | head -20
 ```
 
-Inspect a selected worktree:
+Inspect the selected worktree:
 
 ```bash
 worktree="${HOME}/.remote-work/repos/gh/OWNER/REPO/foolfad-run-id"
@@ -51,7 +50,7 @@ find "$worktree" -xdev -type f -printf '%T@ %p\n' 2>/dev/null \
   | head -40
 ```
 
-Look for a running command from that worktree:
+Look for a process tied to that worktree:
 
 ```bash
 pgrep -af "$worktree" || true
@@ -75,6 +74,6 @@ foolfad -- npm run dev
 foolfad --command 'npm run test'
 ```
 
-It writes the pushed repo state to a local worktree on this machine and runs the requested command there. If logs are not present as files, say that directly and report the process state, worktree status, last commit, and recent file activity instead.
+Foolfad writes the pushed repo state to a local worktree on this machine and runs the requested command there. It does not create a standard log file or pidfile. If logs are not present as files, say so and report process state, worktree status, last commit, and recent file activity instead.
 
 If the command is a Boondoggle run and the `boondoggle-runs` skill is available, use that skill for Boondoggle-specific activity and completion signals.

@@ -1,91 +1,126 @@
 ---
 name: offload
-description: Use when the user wants to run a long or heavy task on another computer instead of their own — so their own machine stays free, the work keeps going even if they close their laptop or lose their connection, and the finished result comes back to them as a branch in their project, ready to review and merge. If there is no other computer set up yet, this skill helps them set one up.
+description: Use when the user wants to run a long or resource-heavy task on another computer so their local machine stays free, the work continues if they close their laptop or lose connection, and the result returns as a reviewable branch in their project. Use this skill also when no offload machine exists yet and the user needs help setting one up.
 argument-hint: <plain description of the work to hand off>
 ---
 
 # Offload
 
-You are handing the work below off to another computer and getting the result back as a branch in
-the user's project. You set it running over there — you don't do the work yourself.
+Help the user offload work to another computer, or set up and configure the target computer. A
+correct offload preserves the local project's behavior: it rebuilds the same environment from the
+project's Nix flake, runs the requested work there, and returns the result as a branch in the user's
+project.
+
+You do NOT do the requested work yourself when this skill is invoked. You must start it on the target
+machine.
 
 > $ARGUMENTS
 
-Work out what you can from the project and the request. Only stop to ask when there's a real choice
-to make, or when something costs money or needs a key.
+Infer what you can from the project and request. Ask only when the choice matters: spending money,
+using an online account, choosing between valid target machines, or changing project configuration.
 
-## The tools
+## Supporting Skills
 
-Three custom commands. You only ever run the first one — it does everything else for you, on the
-other computer.
+Use supporting skills for specialized work: `foolfad` for the hand-off, `foolfad-config` for remote
+GitHub and assistant setup, and `ambit-cli` for provisioning or managing the private machine. If a
+skill is missing, try `npx skills --help` and `npx skills add <repo> --list`; `foolfad` and
+`foolfad-config` are in `ToxicPine/tissloolly`, and `ambit-cli` is in `ToxicPine/ambit-skills`.
 
-- **foolfad** — runs here, on the user's own machine, from inside the git project. It pushes the
-  project's current state up to the other computer as a branch `foolfad/<run-id>`, then
-  starts the work over there. It doesn't bring results back on its own: a plain command has to push
-  whatever it changed itself, while the open-ended path below pushes results back for you.
-- **boondoggle** — runs over on the other computer, inside the copied-over project. It puts a coding
-  assistant such as Codex or Claude Code to work toward a goal, lets it run until the goal is done,
-  then commits what changed and pushes it back on the run branch. Reach for it (through foolfad)
-  when the task is open-ended — "make this feature work" — rather than one exact command. Assistant
-  setup on that computer is handled through the `foolfad-config` skill; see
+## Tools
+
+Three custom commands are involved. Run only `foolfad` locally; it starts the other commands on the
+target machine.
+
+- **foolfad** runs locally, inside the user's git project. It pushes the project's current state to
+  the target machine as branch `foolfad/<run-id>`, then starts the remote work. It does not pull
+  results back by itself. For a fixed command, that command must push its own changes. For an
+  open-ended task, `boondoggle` commits and pushes the result.
+- **boondoggle** runs on the target machine, inside the copied project. It gives a coding assistant,
+  such as Codex or Claude Code, a goal, lets it run until done, then commits changes and pushes them
+  back on the run branch. Use it through `foolfad` when the task is open-ended, such as "make this
+  feature work", rather than one exact command. Configure the assistant through `foolfad-config`; see
   `references/assistants-on-the-machine.md`.
-- **vusperize** — also runs over on the other computer, wrapped around the work so it can send live
-  progress pings (for example to Telegram) while the job runs. Optional, nice for long jobs. If the
-  user wants Telegram pings and it's not set up yet, see `references/setup-telegram.md`.
+- **vusperize** runs on the target machine and wraps the work so it can send live progress pings,
+  for example to Telegram. Use it for long jobs or when the user asks for progress updates. If the
+  user wants Telegram pings and they are not set up yet, see `references/setup-telegram.md`.
 
-So foolfad is the only one the user runs themselves; it reaches the other computer through a
-transport (see "Find the machine" below) and runs boondoggle and vusperize over there. That other
-computer keeps its files between restarts, rebuilds the project's dependencies fresh each time, and
-already has boondoggle, vusperize and the rest installed on it. If there's no such computer yet, set
-one up with `references/provision-remote-machine.md`. Otherwise assume one exists.
+The user runs only `foolfad`. It reaches the target through a transport (see "Find the machine") and
+starts `boondoggle` or `vusperize` there. The target machine keeps its files between restarts,
+rebuilds project dependencies fresh each run, and has the remote-side tools installed. If no target
+machine exists, set one up with `references/provision-remote-machine.md`. Otherwise assume one
+exists.
 
 ## Running the hand-off
 
-**Nix must be installed on the user's own machine.** The other computer rebuilds the project's
-environment from its `flake.nix`, and Nix is what makes that work, so it has to be here too. If
-`nix` is missing, point the user at https://install.determinate.systems and offer to run the
-installer. The only pieces that need to be here locally are foolfad and the transport it uses
-(`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`) — boondoggle and vusperize live on the other
-computer. If foolfad or its transport isn't installed here, run from source, e.g.
-`nix run github:ToxicPine/tissloolly#foolfad -- …` (the transports are in the `foolfad-transports`
-package).
+**Nix must be installed on the user's local machine.** Offloading works cleanly only when the target
+machine can rebuild the project environment from `flake.nix`. That keeps dependencies and behavior
+consistent after the work moves. If `nix` is missing, point the user at
+https://install.determinate.systems and offer to run the installer. The only local tools needed are
+`foolfad` and its transport (`foolfad-ssh`, `foolfad-tailscale`, or `foolfad-fly`). `boondoggle` and
+`vusperize` live on the target machine. If `foolfad` or its transport is not installed locally, run
+from source, e.g. `nix run github:ToxicPine/tissloolly#foolfad -- ...` (the transports are in the
+`foolfad-transports` package).
 
-**Check the project rebuilds over there.** Glance at `flake.nix` and any `.envrc`: will the rebuilt
-project have the dependencies and settings this task needs? A sanity check, not an audit. If it's
-incomplete or there's no `flake.nix`, tell the user and offer to fix it first — usually by adding or
-extending a `devShell` (with an `.envrc` so it loads itself). foolfad copies the whole project, so
-any secret the devShell can't provide must not travel as plaintext; offer to encrypt it (`age` or
-`sops-nix`). Ask before changing anything.
+**Check the flake offload marker before doing anything with the flake.** Use `nix flake show` (or
+`nix flake show --json`) to look for top-level `x-offload`. Treat it as a hint, not a guarantee:
 
-**Find the machine.** foolfad reaches it through `FOOLFAD_TRANSPORT` (e.g. `foolfad-ssh box.lab`,
-`foolfad-tailscale box.lab`, or `foolfad-fly --app … --machine …`).
+- `"configured"` means an offload worked at some point. Try it; if it breaks because setup drifted,
+  move it back to `"untested"` while you re-check the setup, then restore `"configured"` after a
+  successful offload.
+- `"untested"` means setup was attempted and nothing obvious blocks it, but no successful offload is
+  known yet.
+- `"none"` means there is a hard reason not to offload, or the user does not want offloading for this
+  project. Optionally add `x-offload-none-reason` with a few dense words.
+
+When you become confident the flake will work for offloading, set `x-offload = "untested";`. After a
+successful offload, set `x-offload = "configured";`. If you find a real blocker, or the user
+declines offloading, set `x-offload = "none";`.
+
+Keep it in `outputs` beside the existing outputs:
+
+```nix
+outputs = { self, nixpkgs, ... }: {
+  x-offload = "configured";
+  # existing outputs...
+};
+```
+
+**Check that the project rebuilds on the target.** Review `flake.nix` and any `.envrc`: will the
+rebuilt project have the dependencies and settings this task needs? This is a sanity check, not an
+audit. If setup is incomplete or there is no `flake.nix`, tell the user and offer to fix it first,
+usually by adding or extending a `devShell` and `.envrc`. `foolfad` copies the whole project, so any
+secret the devShell cannot provide must not travel as plaintext. Offer to encrypt it with `age` or
+`sops-nix`. Ask before changing anything.
+
+**Find the machine.** `foolfad` reaches it through `FOOLFAD_TRANSPORT` (for example
+`foolfad-ssh box.lab`, `foolfad-tailscale box.lab`, or `foolfad-fly --app ... --machine ...`).
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
-- If not, check whether a machine exists that just isn't pointed to (the provisioning doc shows how
-  to list what's out there) and set `FOOLFAD_TRANSPORT` to reach it.
-- If none exists, tell the user setting one up means renting a small server from Fly.io, which costs
-  a little money. If they agree, walk through `references/provision-remote-machine.md`.
-- If a machine is set up but foolfad can't reach the repo or push results back, use the
-  `foolfad-config` skill to check and configure its GitHub access.
+- If not, check whether a machine already exists but is not selected. The provisioning doc shows how
+  to list machines. Set `FOOLFAD_TRANSPORT` to reach the chosen machine.
+- If no machine exists, tell the user setup means renting a small server from Fly.io, which costs
+  money. If they agree, follow `references/provision-remote-machine.md`.
+- If a machine exists but `foolfad` cannot reach the repo or push results back, use
+  `foolfad-config` to check and configure its GitHub access.
 
 **Hand it off.**
 
-- One exact command: `foolfad -- <command>`. Runs on the branch over there; to get changes back, the
-  command must push them itself.
+- One exact command: `foolfad -- <command>`. This runs on the remote branch. To return changes, the
+  command must commit and push them itself.
 - Open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. The configured
-  assistant works until done and pushes the result back as a branch. Requires the assistant, such as
-  Codex or Claude Code, configured through `foolfad-config`
+  assistant works until done, then pushes the result back as a branch. This requires an assistant,
+  such as Codex or Claude Code, configured through `foolfad-config`
   (`references/assistants-on-the-machine.md`).
 
-The work starts already inside the project directory over there, so its environment (the devShell,
-`.envrc`) loads on its own — you don't need to wrap a `cd` or `nix develop` around it. For long jobs
-or progress pings, wrap the command with vusperize, which runs alongside it on the machine.
+The work starts inside the project directory on the target machine, so the environment (`devShell`,
+`.envrc`) loads on its own. Do not wrap the command in `cd` or `nix develop`. For long jobs or
+progress pings, wrap the command with `vusperize`, which runs alongside it on the target machine.
 
-**Report back:** the branch the work lands on, the machine it ran on, and how progress can be
-checked later. `foolfad-target` and `boondoggle-runs` are target-side skills: they are useful when
-the user is talking to an agent on the remote machine (for example over Telegram), not from the
-local checkout. If the user is local only, use `FOOLFAD_TRANSPORT` to run a target-side command that
-asks the remote agent/Codex to inspect the run there and print the answer back here.
+**Report back.** Tell the user which branch receives the work, which machine ran it, and how to check
+progress later. `foolfad-target` and `boondoggle-runs` are target-side skills. They are useful when
+the user talks to an agent on the target machine, for example over Telegram. If the user is local
+only, use `FOOLFAD_TRANSPORT` to run a target-side command that asks the remote agent or Codex to
+inspect the run and print the answer back locally.
 
 ## Follow-up questions
 
