@@ -38,6 +38,12 @@ mode:
 Use template mode exactly as shown. Do not use image-only mode: it writes a bare config without the
 `/data` volume, so the machine would lose state after restart.
 
+The `ToxicPine/hermes-ambit` image also includes a live Hermes conversational agent for
+Telegram-based interaction with the computer, monitoring tasks on it, notifications, etc. That part
+is optional: it relies on authenticated Codex on the machine. If the user wants it, use the
+`foolfad-config` skill for Codex setup once its `codex` target is available, then see
+`references/setup-telegram.md`.
+
 ## 5. Set the machine hostname
 Set `HOSTNAME` after deployment so the machine's web links match the private address:
 `npx @cardelli/ambit secrets set <machine>.<network> HOSTNAME=<machine>.<network>`
