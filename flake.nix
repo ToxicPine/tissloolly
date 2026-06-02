@@ -38,6 +38,10 @@
           skillsPath = ./packages/foolfad/skills;
         }
         {
+          name = "foolfad-config";
+          skillsPath = ./packages/foolfad-config/skills;
+        }
+        {
           name = "offload";
           skillsPath = ./packages/offload/skills;
         }
@@ -70,6 +74,7 @@
           prasskitte = pkgs.callPackage ./packages/prasskitte { };
           boondoggle = pkgs.callPackage ./packages/boondoggle { };
           foolfad = pkgs.callPackage ./packages/foolfad { };
+          foolfad-config = pkgs.callPackage ./packages/foolfad-config { };
           foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { };
           ghwc = pkgs.callPackage ./packages/ghwc { };
           ghwrc = pkgs.callPackage ./packages/ghwrc { };

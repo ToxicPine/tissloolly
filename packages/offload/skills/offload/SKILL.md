@@ -24,10 +24,11 @@ other computer.
   starts the work over there. It doesn't bring results back on its own: a plain command has to push
   whatever it changed itself, while the open-ended path below pushes results back for you.
 - **boondoggle** — runs over on the other computer, inside the copied-over project. It puts a coding
-  assistant (Codex) to work toward a goal, lets it run until the goal is done, then commits what
-  changed and pushes it back on the run branch. Reach for it (through foolfad) when the task is
-  open-ended — "make this feature work" — rather than one exact command. Codex has to be signed in
-  on that computer first — see `references/codex-on-the-machine.md`.
+  assistant such as Codex or Claude Code to work toward a goal, lets it run until the goal is done,
+  then commits what changed and pushes it back on the run branch. Reach for it (through foolfad)
+  when the task is open-ended — "make this feature work" — rather than one exact command. Assistant
+  setup on that computer is handled through the `foolfad-config` skill; see
+  `references/assistants-on-the-machine.md`.
 - **vusperize** — also runs over on the other computer, wrapped around the work so it can send live
   progress pings (for example to Telegram) while the job runs. Optional, nice for long jobs. If the
   user wants Telegram pings and it's not set up yet, see `references/setup-telegram.md`.
@@ -64,15 +65,17 @@ any secret the devShell can't provide must not travel as plaintext; offer to enc
   to list what's out there) and set `FOOLFAD_TRANSPORT` to reach it.
 - If none exists, tell the user setting one up means renting a small server from Fly.io, which costs
   a little money. If they agree, walk through `references/provision-remote-machine.md`.
-- If a machine is set up but foolfad can't reach the repo or push results back, its GitHub access
-  needs fixing — see the git section of the provisioning doc.
+- If a machine is set up but foolfad can't reach the repo or push results back, use the
+  `foolfad-config` skill to check and configure its GitHub access.
 
 **Hand it off.**
 
 - One exact command: `foolfad -- <command>`. Runs on the branch over there; to get changes back, the
   command must push them itself.
-- Open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. Codex works until done
-  and pushes the result back as a branch. Requires Codex signed in (`references/codex-on-the-machine.md`).
+- Open-ended task: `foolfad -- bash -lc 'printf "%s" "<task>" | boondoggle'`. The configured
+  assistant works until done and pushes the result back as a branch. Requires the assistant, such as
+  Codex or Claude Code, configured through `foolfad-config`
+  (`references/assistants-on-the-machine.md`).
 
 The work starts already inside the project directory over there, so its environment (the devShell,
 `.envrc`) loads on its own — you don't need to wrap a `cd` or `nix develop` around it. For long jobs
