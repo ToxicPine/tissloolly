@@ -16,12 +16,12 @@ git_user_email="$(git config --global --get user.email 2>/dev/null || true)"
 credential_helper="$(git config --global --get credential.helper 2>/dev/null || true)"
 
 jq -n \
-  --argjson authenticated "$authenticated" \
-  --arg account "$account" \
-  --arg host "$host" \
-  --arg gitUserName "$git_user_name" \
-  --arg gitUserEmail "$git_user_email" \
-  --arg credentialHelper "$credential_helper" \
+  --argjson authenticated "${authenticated}" \
+  --arg account "${account}" \
+  --arg host "${host}" \
+  --arg gitUserName "${git_user_name}" \
+  --arg gitUserEmail "${git_user_email}" \
+  --arg credentialHelper "${credential_helper}" \
   '{
     authenticated: $authenticated
   }
