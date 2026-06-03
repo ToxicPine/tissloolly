@@ -7,7 +7,12 @@ import {
 } from "./azure/stdio.ts";
 import { parseCliArgs, usage } from "./cli/args.ts";
 import { type CommandError, commandError, Out } from "./cli/output.ts";
-import { authenticateAccount, configureBilling, deploy } from "./commands.ts";
+import {
+  authenticateAccount,
+  configureBilling,
+  deploy,
+  setSecret,
+} from "./commands.ts";
 import { readAccountArtifact, writeAccountArtifact } from "./domain/state.ts";
 import {
   type AccountArtifact,
@@ -15,6 +20,7 @@ import {
   BillingInput,
   type CommandName,
   DeployInput,
+  SecretSetInput,
 } from "./domain/types.ts";
 
 if (import.meta.main) {
@@ -43,12 +49,11 @@ export async function main(argv: string[]): Promise<void> {
 
   try {
     if (parsed.command === "authenticate") {
-      const input =
-        parsed.mode === "json"
-          ? await completeAuthenticateJson(
-              await readJsonInputOrFlags(parsed.partialInput),
-            )
-          : await completeAuthenticateInteractive(parsed.partialInput, out);
+      const input = parsed.mode === "json"
+        ? await completeAuthenticateJson(
+          await readJsonInputOrFlags(parsed.partialInput),
+        )
+        : await completeAuthenticateInteractive(parsed.partialInput, out);
       const result = await authenticateAccount(input);
       if (!result.ok) return renderFailure(out, parsed.command, result.error);
       await writeAccountArtifact({
@@ -64,12 +69,11 @@ export async function main(argv: string[]): Promise<void> {
     }
 
     if (parsed.command === "configure-billing") {
-      const input =
-        parsed.mode === "json"
-          ? await completeBillingJson(
-              await readJsonInputOrFlags(parsed.partialInput),
-            )
-          : await completeBillingInteractive(parsed.partialInput, out);
+      const input = parsed.mode === "json"
+        ? await completeBillingJson(
+          await readJsonInputOrFlags(parsed.partialInput),
+        )
+        : await completeBillingInteractive(parsed.partialInput, out);
       const result = await configureBilling(input);
       if (!result.ok) return renderFailure(out, parsed.command, result.error);
       await writeAccountArtifact({
@@ -85,12 +89,27 @@ export async function main(argv: string[]): Promise<void> {
       return;
     }
 
-    const input =
-      parsed.mode === "json"
-        ? await completeDeployJson(
-            await readJsonInputOrFlags(parsed.partialInput),
-          )
-        : await completeDeployInteractive(parsed.partialInput);
+    if (parsed.command === "set-secret") {
+      const input = parsed.mode === "json"
+        ? await completeSecretSetJson(
+          await readJsonInputOrFlags(parsed.partialInput),
+        )
+        : await completeSecretSetInteractive(parsed.partialInput);
+      const result = await setSecret(input);
+      if (!result.ok) return renderFailure(out, parsed.command, result.error);
+      out.write(
+        `Set secret ${result.value.name} on resource group ${result.value.resourceGroupName}`,
+      );
+      out.stage({ ok: true, command: parsed.command, data: result.value });
+      out.flush();
+      return;
+    }
+
+    const input = parsed.mode === "json"
+      ? await completeDeployJson(
+        await readJsonInputOrFlags(parsed.partialInput),
+      )
+      : await completeDeployInteractive(parsed.partialInput);
     const result = await deploy(input);
     if (!result.ok) return renderFailure(out, parsed.command, result.error);
     out.write(`Deployed resource group ${result.value.resourceGroupName}`);
@@ -107,7 +126,7 @@ function completeAuthenticateJson(input: unknown) {
 
 async function completeAuthenticateInteractive(
   input: Partial<AuthInput>,
-  out: Out,
+  _out: Out,
 ) {
   let accounts = await listAzureAccounts();
   if (accounts.length === 0) {
@@ -131,7 +150,7 @@ async function completeAuthenticateInteractive(
 
 async function completeBillingJson(input: unknown) {
   const partial = BillingInput.pick({ subscriptionId: true }).parse(input);
-  const artifact = await readRequiredArtifact("authenticated");
+  const artifact = await readArtifact();
   return BillingInput.parse({
     accountEmail: artifact.accountEmail,
     subscriptionId: partial.subscriptionId,
@@ -142,7 +161,7 @@ async function completeBillingInteractive(
   input: Partial<BillingInput>,
   out: Out,
 ) {
-  const artifact = await readRequiredArtifact("authenticated");
+  const artifact = await readArtifact();
   const accounts = (await listAzureAccounts()).filter(
     (account) =>
       account.user.name === artifact.accountEmail &&
@@ -183,8 +202,7 @@ async function completeBillingInteractive(
     accounts.map((account) => account.id),
     (id) => {
       const account = accounts.find((candidate) => candidate.id === id)!;
-      const tenant =
-        account.tenantDisplayName ??
+      const tenant = account.tenantDisplayName ??
         account.tenantDefaultDomain ??
         account.tenantId;
       return `${account.name} (${account.id}) - ${tenant}`;
@@ -201,7 +219,7 @@ async function completeDeployJson(input: unknown) {
   if (partial.accountEmail || partial.subscriptionId) {
     return DeployInput.parse(partial);
   }
-  const artifact = await readRequiredArtifact("configured");
+  const artifact = await readArtifact();
   if (artifact.stage !== "configured") {
     throw commandError(
       "invalid-account-state",
@@ -216,7 +234,7 @@ async function completeDeployJson(input: unknown) {
 }
 
 async function completeDeployInteractive(input: Partial<DeployInput>) {
-  const artifact = await readRequiredArtifact("configured");
+  const artifact = await readArtifact();
   if (artifact.stage !== "configured") {
     throw commandError(
       "invalid-account-state",
@@ -230,17 +248,44 @@ async function completeDeployInteractive(input: Partial<DeployInput>) {
   });
 }
 
-async function readRequiredArtifact(
-  stage: "authenticated" | "configured",
-): Promise<AccountArtifact> {
-  const artifact = await readAccountArtifact();
-  if (stage === "configured" && artifact.stage !== "configured") {
+async function completeSecretSetJson(input: unknown) {
+  const partial = SecretSetInput.partial().parse(input);
+  if (partial.accountEmail || partial.subscriptionId) {
+    return SecretSetInput.parse(partial);
+  }
+  const artifact = await readArtifact();
+  if (artifact.stage !== "configured") {
     throw commandError(
       "invalid-account-state",
-      "Run configure-billing before deploy.",
+      "Run configure-billing before set-secret.",
     );
   }
-  return artifact;
+  return SecretSetInput.parse({
+    accountEmail: artifact.accountEmail,
+    subscriptionId: artifact.subscriptionId,
+    name: partial.name,
+    value: partial.value,
+  });
+}
+
+async function completeSecretSetInteractive(input: Partial<SecretSetInput>) {
+  const artifact = await readArtifact();
+  if (artifact.stage !== "configured") {
+    throw commandError(
+      "invalid-account-state",
+      "Run configure-billing before set-secret.",
+    );
+  }
+  return SecretSetInput.parse({
+    accountEmail: artifact.accountEmail,
+    subscriptionId: artifact.subscriptionId,
+    name: input.name,
+    value: input.value,
+  });
+}
+
+async function readArtifact(): Promise<AccountArtifact> {
+  return await readAccountArtifact();
 }
 
 async function readJsonInputOrFlags(flags: unknown): Promise<unknown> {

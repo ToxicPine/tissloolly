@@ -1,6 +1,7 @@
 import z from "zod";
 import { findEnabledSubscription, listAzureAccounts } from "./azure/account.ts";
 import { deployAzureResources } from "./azure/deploy.ts";
+import { setContainerAppSecret } from "./azure/secrets.ts";
 import {
   AzMalformedOutputError,
   ConsoleError,
@@ -14,7 +15,10 @@ import type {
   BillingOutput,
   DeployInput,
   DeployOutput,
+  SecretSetInput,
+  SecretSetOutput,
 } from "./domain/types.ts";
+import { resourceGroupForAccount } from "./domain/names.ts";
 import { ok, type Result } from "./lib/result.ts";
 
 const SUBSCRIPTION_SETUP_URL =
@@ -80,6 +84,39 @@ export const deploy: CommandRunner<DeployInput, DeployOutput> = (input) =>
     }
 
     return await deployAzureResources(input, subscription.tenantId);
+  });
+
+export const setSecret: CommandRunner<SecretSetInput, SecretSetOutput> = (
+  input,
+) =>
+  runCore(async () => {
+    const accounts = await listAzureAccounts();
+    const subscription = findEnabledSubscription(
+      accounts,
+      input.accountEmail,
+      input.subscriptionId,
+    );
+    if (!subscription) {
+      throw commandError(
+        "subscription-setup-required",
+        "No enabled Azure subscription is visible.",
+        {
+          setupUrl: SUBSCRIPTION_SETUP_URL,
+        },
+      );
+    }
+
+    const resourceGroupName = await resourceGroupForAccount(
+      input.accountEmail,
+      subscription.id,
+    );
+    await setContainerAppSecret(
+      subscription.id,
+      resourceGroupName,
+      input.name,
+      input.value,
+    );
+    return { resourceGroupName, name: input.name };
   });
 
 async function runCore<Output>(

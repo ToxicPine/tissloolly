@@ -4,6 +4,7 @@ import {
   CONTAINER_APPS_ENVIRONMENT_NAME,
   CONTAINER_IMAGE,
   CONTAINER_PORT,
+  HOSTNAME_SECRET_NAME,
   MANAGED_IDENTITY_NAME,
 } from "../domain/names.ts";
 import { runAzRaw, runAzText, runWithAz } from "./stdio.ts";
@@ -12,8 +13,14 @@ export async function createOrUpdateContainerApp(
   subscriptionId: string,
   resourceGroupName: string,
   location: string,
+  appFqdn: string,
 ): Promise<void> {
-  const yaml = containerAppYaml(subscriptionId, resourceGroupName, location);
+  const yaml = containerAppYaml(
+    subscriptionId,
+    resourceGroupName,
+    location,
+    appFqdn,
+  );
   const path = await Deno.makeTempFile({
     prefix: "hettron-containerapp-",
     suffix: ".yaml",
@@ -120,8 +127,10 @@ function containerAppYaml(
   subscriptionId: string,
   resourceGroupName: string,
   location: string,
+  appFqdn: string,
 ): string {
-  const identityId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${MANAGED_IDENTITY_NAME}`;
+  const identityId =
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${MANAGED_IDENTITY_NAME}`;
   return [
     `name: ${CONTAINER_APP_NAME}`,
     "type: Microsoft.App/containerApps",
@@ -132,14 +141,19 @@ function containerAppYaml(
     `    ${identityId}: {}`,
     "properties:",
     "  managedEnvironmentId: " +
-      `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.App/managedEnvironments/${CONTAINER_APPS_ENVIRONMENT_NAME}`,
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.App/managedEnvironments/${CONTAINER_APPS_ENVIRONMENT_NAME}`,
     "  configuration:",
     "    activeRevisionsMode: Single",
+    "    secrets:",
+    `      - name: ${HOSTNAME_SECRET_NAME}`,
+    `        value: "${appFqdn}"`,
     "  template:",
     "    containers:",
     `      - name: ${CONTAINER_APP_NAME}`,
     `        image: ${CONTAINER_IMAGE}`,
     "        env:",
+    "          - name: HOSTNAME",
+    `            secretRef: ${HOSTNAME_SECRET_NAME}`,
     "          - name: WEBHOOK_ENABLED",
     '            value: "true"',
     "          - name: WEBHOOK_PORT",

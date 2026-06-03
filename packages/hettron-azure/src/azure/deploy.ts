@@ -82,6 +82,7 @@ export async function deployAzureResources(
     input.subscriptionId,
     resourceGroupName,
     location,
+    appFqdn,
   );
   await configureEasyAuth(
     input.subscriptionId,

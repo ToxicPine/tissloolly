@@ -8,6 +8,8 @@ import {
   type DeployInput,
   DeployInput as DeployInputSchema,
   isCommand,
+  type SecretSetInput,
+  SecretSetInput as SecretSetInputSchema,
 } from "../domain/types.ts";
 
 export const usage = `Usage: hettron-azure [--json] COMMAND [FLAGS]
@@ -18,41 +20,48 @@ Commands:
   authenticate        Select an Azure account.
   configure-billing   Select and validate an Azure subscription.
   deploy              Deploy the Hettron artifacts to Azure Container Apps.
+  set-secret          Set a secret on the deployed Container App.
 `;
 
 export type CliMode = "interactive" | "json";
 
 export type ParsedCli =
   | {
-      ok: true;
-      mode: CliMode;
-      command: "authenticate";
-      partialInput: Partial<AuthInput>;
-    }
+    ok: true;
+    mode: CliMode;
+    command: "authenticate";
+    partialInput: Partial<AuthInput>;
+  }
   | {
-      ok: true;
-      mode: CliMode;
-      command: "configure-billing";
-      partialInput: Partial<BillingInput>;
-    }
+    ok: true;
+    mode: CliMode;
+    command: "configure-billing";
+    partialInput: Partial<BillingInput>;
+  }
   | {
-      ok: true;
-      mode: CliMode;
-      command: "deploy";
-      partialInput: Partial<DeployInput>;
-    }
+    ok: true;
+    mode: CliMode;
+    command: "deploy";
+    partialInput: Partial<DeployInput>;
+  }
   | {
-      ok: false;
-      json: boolean;
-      message: string;
-      command?: CommandName;
-      help?: boolean;
-    };
+    ok: true;
+    mode: CliMode;
+    command: "set-secret";
+    partialInput: Partial<SecretSetInput>;
+  }
+  | {
+    ok: false;
+    json: boolean;
+    message: string;
+    command?: CommandName;
+    help?: boolean;
+  };
 
 export function parseCliArgs(argv: string[]): ParsedCli {
   const parsed = parseArgs(argv, {
     boolean: ["json", "help"],
-    string: ["account-email", "subscription-id", "location"],
+    string: ["account-email", "subscription-id", "location", "name", "value"],
     alias: { h: "help" },
     "--": false,
   });
@@ -93,6 +102,8 @@ export function parseCliArgs(argv: string[]): ParsedCli {
     accountEmail: parsed["account-email"],
     subscriptionId: parsed["subscription-id"],
     location: parsed.location,
+    name: parsed.name,
+    value: parsed.value,
   });
 
   switch (command) {
@@ -114,6 +125,12 @@ export function parseCliArgs(argv: string[]): ParsedCli {
         ? { ok: true, mode, command, partialInput: input.data }
         : { ok: false, json, command, message: input.error.message };
     }
+    case "set-secret": {
+      const input = SecretSetInputSchema.partial().safeParse(raw);
+      return input.success
+        ? { ok: true, mode, command, partialInput: input.data }
+        : { ok: false, json, command, message: input.error.message };
+    }
   }
 }
 
@@ -128,11 +145,13 @@ const COMMAND_FLAGS = {
     authenticate: ["account-email"],
     "configure-billing": ["subscription-id"],
     deploy: ["location"],
+    "set-secret": ["name", "value"],
   },
   json: {
     authenticate: ["account-email"],
     "configure-billing": ["subscription-id"],
     deploy: ["account-email", "subscription-id", "location"],
+    "set-secret": ["account-email", "subscription-id", "name", "value"],
   },
 } satisfies Record<CliMode, Record<CommandName, string[]>>;
 

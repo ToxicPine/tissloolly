@@ -5,7 +5,7 @@ import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 const configureFlagSchema = z.object({
   token: z.string().min(1).optional(),
   gitUserName: z.string().min(1).optional(),
-  gitUserEmail: z.string().email().optional(),
+  gitUserEmail: z.email().optional(),
 });
 type ConfigureFlags = z.infer<typeof configureFlagSchema>;
 

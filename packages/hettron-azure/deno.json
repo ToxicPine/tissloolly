@@ -8,13 +8,6 @@
   "compilerOptions": {
     "strict": true
   },
-  "fmt": {
-    "include": ["src/", "tests/", "deno.json"],
-    "indentWidth": 2,
-    "lineWidth": 100,
-    "semiColons": true,
-    "singleQuote": false
-  },
   "lint": {
     "rules": {
       "tags": ["recommended"]

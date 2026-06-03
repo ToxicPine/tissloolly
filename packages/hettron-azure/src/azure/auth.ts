@@ -21,8 +21,7 @@ export async function ensureEntraApp(
     .parse(
       await runWithAz(["ad", "app", "list", "--display-name", displayName]),
     );
-  const appId =
-    existing[0]?.appId ??
+  const appId = existing[0]?.appId ??
     AppCreate.parse(
       await runWithAz([
         "ad",
@@ -111,7 +110,8 @@ export async function restrictEasyAuthToSignedInUser(
   resourceGroupName: string,
 ): Promise<void> {
   const user = await signedInUser();
-  const authConfigId = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.App/containerApps/${CONTAINER_APP_NAME}/authConfigs/current`;
+  const authConfigId =
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}/providers/Microsoft.App/containerApps/${CONTAINER_APP_NAME}/authConfigs/current`;
   await runWithAz([
     "resource",
     "update",
@@ -120,15 +120,17 @@ export async function restrictEasyAuthToSignedInUser(
     "--api-version",
     "2025-02-02-preview",
     "--set",
-    `properties.identityProviders.azureActiveDirectory.validation=${JSON.stringify(
-      {
-        defaultAuthorizationPolicy: {
-          allowedPrincipals: {
-            identities: [user.id],
+    `properties.identityProviders.azureActiveDirectory.validation=${
+      JSON.stringify(
+        {
+          defaultAuthorizationPolicy: {
+            allowedPrincipals: {
+              identities: [user.id],
+            },
           },
         },
-      },
-    )}`,
+      )
+    }`,
   ]);
 }
 

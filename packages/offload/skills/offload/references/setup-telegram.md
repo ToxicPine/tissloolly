@@ -45,21 +45,27 @@ If more than one person should be allowed, collect each of their IDs.
 ## 3. Give the Target the Token and Allowed Users
 
 These are secrets the _target itself_ needs, so store them in the target secret store, never in a
-project. For the default Hettron Azure target, use Azure Container Apps secrets and expose them as
-environment variables:
+project. For the default Hettron Azure target, run these after `hettron-azure deploy`. Deploy already
+exposes the final Container Apps URL as the secret-backed `HOSTNAME` environment variable.
+
+Set the Telegram secrets through `hettron-azure`; the command output does not include the values.
+Container Apps secret names are short, lowercase names and do not need to match the environment
+variable names:
 
 ```bash
-az containerapp secret set \
-  --resource-group <resource-group> \
-  --name hettron-v0 \
-  --secrets telegram-bot-token=<token> telegram-allowed-users=<id>
+hettron-azure set-secret --name telegram-bot-token --value "$TELEGRAM_BOT_TOKEN"
+hettron-azure set-secret --name telegram-users --value "$TELEGRAM_ALLOWED_USERS"
+```
 
+Then expose those existing secrets as environment variables on the Container App:
+
+```bash
 az containerapp update \
-  --resource-group <resource-group> \
+  --resource-group <resource-group-from-set-secret> \
   --name hettron-v0 \
   --set-env-vars \
     TELEGRAM_BOT_TOKEN=secretref:telegram-bot-token \
-    TELEGRAM_ALLOWED_USERS=secretref:telegram-allowed-users
+    TELEGRAM_ALLOWED_USERS=secretref:telegram-users
 ```
 
 `TELEGRAM_ALLOWED_USERS` takes a comma-separated list when more than one person is allowed, e.g.
@@ -70,15 +76,12 @@ results or `vusperize` pings when no chat is passed. For a normal one-on-one cha
 the user's Telegram ID:
 
 ```bash
-az containerapp secret set \
-  --resource-group <resource-group> \
-  --name hettron-v0 \
-  --secrets telegram-home-channel=<id>
+hettron-azure set-secret --name telegram-home --value "$TELEGRAM_HOME_CHANNEL"
 
 az containerapp update \
-  --resource-group <resource-group> \
+  --resource-group <resource-group-from-set-secret> \
   --name hettron-v0 \
-  --set-env-vars TELEGRAM_HOME_CHANNEL=secretref:telegram-home-channel
+  --set-env-vars TELEGRAM_HOME_CHANNEL=secretref:telegram-home
 ```
 
 ## 4. Check it works

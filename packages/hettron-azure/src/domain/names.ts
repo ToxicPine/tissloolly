@@ -29,6 +29,9 @@ export type StorageAccountName = z.infer<typeof StorageAccountName>;
 export const FileShareName = z.union([z.literal("data"), z.literal("nix")]);
 export type FileShareName = z.infer<typeof FileShareName>;
 
+export const HostnameSecretName = z.literal("hostname");
+export type HostnameSecretName = z.infer<typeof HostnameSecretName>;
+
 export const PRODUCT_SLUG: ProductSlug = "hettron-v0";
 export const CONTAINER_APP_NAME: ContainerAppName = "hettron-v0";
 export const CONTAINER_APPS_ENVIRONMENT_NAME: ContainerAppsEnvironmentName =
@@ -36,6 +39,7 @@ export const CONTAINER_APPS_ENVIRONMENT_NAME: ContainerAppsEnvironmentName =
 export const LOG_ANALYTICS_WORKSPACE_NAME: LogAnalyticsWorkspaceName =
   "hettron-v0-log";
 export const MANAGED_IDENTITY_NAME: ManagedIdentityName = "hettron-v0-run";
+export const HOSTNAME_SECRET_NAME: HostnameSecretName = "hostname";
 export const FILE_SHARES: readonly FileShareName[] = ["data", "nix"];
 
 export const CONTAINER_IMAGE =

@@ -3,20 +3,21 @@ import type {
   BillingOutput,
   CommandName,
   DeployOutput,
+  SecretSetOutput,
 } from "../domain/types.ts";
 
 export type CommandSuccessCases =
   | { command: "authenticate"; data: AuthOutput }
   | { command: "configure-billing"; data: BillingOutput }
-  | { command: "deploy"; data: DeployOutput };
+  | { command: "deploy"; data: DeployOutput }
+  | { command: "set-secret"; data: SecretSetOutput };
 
 export type AssertAllCommandsCovered =
-  Exclude<CommandName, CommandSuccessCases["command"]> extends never
-    ? true
+  Exclude<CommandName, CommandSuccessCases["command"]> extends never ? true
     : [
-        "Missing CommandSuccessCases for",
-        Exclude<CommandName, CommandSuccessCases["command"]>,
-      ];
+      "Missing CommandSuccessCases for",
+      Exclude<CommandName, CommandSuccessCases["command"]>,
+    ];
 
 export type CommandErrorType =
   | "invalid-arguments"
@@ -43,10 +44,10 @@ export type CommandError = {
 
 export type CommandOutputEnvelope =
   | {
-      ok: true;
-      command: CommandName;
-      data: AuthOutput | BillingOutput | DeployOutput;
-    }
+    ok: true;
+    command: CommandName;
+    data: AuthOutput | BillingOutput | DeployOutput | SecretSetOutput;
+  }
   | { ok: true; help: string }
   | { ok: false; command?: CommandName; error: CommandError };
 

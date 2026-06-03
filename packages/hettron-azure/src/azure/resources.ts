@@ -66,7 +66,7 @@ export async function ensureProviders(subscriptionId: string): Promise<void> {
           namespace,
           "--query",
           "{registrationState:registrationState}",
-        ]).then((value) => ProviderState.parse(value)),
+        ]).then((value) => ProviderState.parse(value))
       ),
     );
     if (states.every((state) => state === "Registered")) {

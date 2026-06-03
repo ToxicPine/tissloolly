@@ -4,6 +4,7 @@ export const COMMANDS = [
   "authenticate",
   "configure-billing",
   "deploy",
+  "set-secret",
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 const COMMAND_SET: ReadonlySet<string> = new Set(COMMANDS);
@@ -20,6 +21,12 @@ export type SubscriptionId = z.infer<typeof SubscriptionId>;
 
 export const AzureLocation = z.string().trim().min(1);
 export type AzureLocation = z.infer<typeof AzureLocation>;
+
+export const SecretName = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9][a-z0-9-]{0,19}$/);
+export type SecretName = z.infer<typeof SecretName>;
 
 export const AuthInput = z.object({
   accountEmail: AccountEmail,
@@ -48,6 +55,18 @@ export const DeployOutput = z.object({
   resourceGroupName: z.string().regex(/^hettron-v0-[a-z0-9]{12}$/),
 });
 
+export const SecretSetInput = z.object({
+  accountEmail: AccountEmail,
+  subscriptionId: SubscriptionId,
+  name: SecretName,
+  value: z.string().min(1),
+});
+
+export const SecretSetOutput = z.object({
+  resourceGroupName: z.string().regex(/^hettron-v0-[a-z0-9]{12}$/),
+  name: SecretName,
+});
+
 export const AccountArtifact = z.discriminatedUnion("stage", [
   z.object({
     version: z.literal(1),
@@ -70,4 +89,6 @@ export type BillingInput = z.infer<typeof BillingInput>;
 export type BillingOutput = z.infer<typeof BillingOutput>;
 export type DeployInput = z.infer<typeof DeployInput>;
 export type DeployOutput = z.infer<typeof DeployOutput>;
+export type SecretSetInput = z.infer<typeof SecretSetInput>;
+export type SecretSetOutput = z.infer<typeof SecretSetOutput>;
 export type AccountArtifact = z.infer<typeof AccountArtifact>;
