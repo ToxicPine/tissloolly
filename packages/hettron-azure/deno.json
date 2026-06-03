@@ -1,0 +1,26 @@
+{
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.14",
+    "@std/cli": "jsr:@std/cli@^1.0.29",
+    "@std/path": "jsr:@std/path@^1.1.2",
+    "zod": "npm:zod@^4.1.12"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "fmt": {
+    "include": ["src/", "tests/", "deno.json"],
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "tasks": {
+    "check": "deno fmt --check && deno lint && deno check src/main.ts && deno test --allow-run --allow-read --allow-write --allow-env=PATH,HOME,AZURE_CONFIG_DIR"
+  }
+}

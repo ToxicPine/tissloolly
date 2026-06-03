@@ -101,7 +101,11 @@ function renderScalar(value: unknown): string {
   if (typeof value === "boolean") {
     return value ? "yes" : "no";
   }
-  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint") {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "bigint"
+  ) {
     return String(value);
   }
   return jsonLines(value);

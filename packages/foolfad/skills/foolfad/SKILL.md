@@ -23,16 +23,18 @@ FOOLFAD_COMMAND='npm run test' foolfad
 
 Foolfad is provider-agnostic. It reaches the target through a **transport**: one local command that reads a script on stdin, runs it under `bash -s` on the remote, and forwards stdout, stderr, and exit status.
 
-Set the transport with `FOOLFAD_TRANSPORT` or `--transport`. Three adapters ship with the project, and any command with the same stdin/stdout/stderr/exit-status contract can be used:
+Set the transport with `FOOLFAD_TRANSPORT` or `--transport`. Multiple adapters ship with the project, and any command with the same stdin/stdout/stderr/exit-status contract can be used:
 
 ```bash
 export FOOLFAD_TRANSPORT='foolfad-ssh box.lab'              # plain SSH
 export FOOLFAD_TRANSPORT='foolfad-tailscale box.lab'        # Tailscale SSH
 export FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'  # Fly.io
+export FOOLFAD_TRANSPORT='foolfad-azure-container --subscription ... --resource-group ... --name ...'  # Azure Container Apps
+export FOOLFAD_TRANSPORT='foolfad-azure-container --hettron'  # Hettron on Azure Container Apps
 foolfad -- npm run test
 ```
 
-The adapter named in the transport must be on `PATH`. For SSH and Tailscale, the first argument is the host; extra args pass through to the adapter. Foolfad has no default transport, so one must be set before launch.
+The adapter named in the transport must be on `PATH`. For SSH and Tailscale, the first argument is the host; extra args pass through to the adapter. For Azure Container Apps, `foolfad-azure-container` accepts explicit `--subscription`, `--resource-group`, and `--name` flags. Add `--hettron` to use the `hettron-azure` deployment state in `~/.hettron/azure/account.json` and the default `hettron-v0` Container App name. Foolfad has no default transport, so one must be set before launch.
 
 ## Required Context
 

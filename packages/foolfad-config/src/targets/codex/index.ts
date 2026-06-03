@@ -1,5 +1,12 @@
-import { type CliBoundaryError, invalidCliArgsFrom } from "../../lib/cli-error.ts";
-import { mutateWrapper, remoteJson, type RemoteJsonError } from "../../lib/remote.ts";
+import {
+  type CliBoundaryError,
+  invalidCliArgsFrom,
+} from "../../lib/cli-error.ts";
+import {
+  mutateWrapper,
+  remoteJson,
+  type RemoteJsonError,
+} from "../../lib/remote.ts";
 import { err, ok, type Result } from "../../lib/result.ts";
 import {
   type CodexInput,
@@ -23,18 +30,28 @@ export type CommandError = RemoteJsonError;
 
 const textDecoder = new TextDecoder();
 
-async function script(name: "GUARD.sh" | "QUERY.sh" | "MUTATE.sh"): Promise<string> {
+async function script(
+  name: "GUARD.sh" | "QUERY.sh" | "MUTATE.sh",
+): Promise<string> {
   return textDecoder.decode(
     await Deno.readFile(new URL(`./${name}`, import.meta.url)),
   );
 }
 
-export async function guard(ctx: CommandContext): Promise<Result<GuardResult, CommandError>> {
+export async function guard(
+  ctx: CommandContext,
+): Promise<Result<GuardResult, CommandError>> {
   return await remoteJson(ctx.transport, await script("GUARD.sh"), guardSchema);
 }
 
-export async function query(ctx: CommandContext): Promise<Result<CodexState, CommandError>> {
-  return await remoteJson(ctx.transport, await script("QUERY.sh"), codexStateSchema);
+export async function query(
+  ctx: CommandContext,
+): Promise<Result<CodexState, CommandError>> {
+  return await remoteJson(
+    ctx.transport,
+    await script("QUERY.sh"),
+    codexStateSchema,
+  );
 }
 
 export async function mutate(
@@ -48,7 +65,9 @@ export async function mutate(
   );
 }
 
-export function parseCheckInput(argv: string[]): Result<undefined, CliBoundaryError> {
+export function parseCheckInput(
+  argv: string[],
+): Result<undefined, CliBoundaryError> {
   try {
     return ok(parseCodexCheckArgs(argv));
   } catch (error) {

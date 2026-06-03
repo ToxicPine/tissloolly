@@ -16,7 +16,6 @@ foolfad/<run-id>
 
 ## Activity Signals
 
-
 Useful local checks:
 
 ```bash

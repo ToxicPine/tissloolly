@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, unstablePkgs ? pkgs, ... }:
 
 # foolfad transport adapters, shipped together so all three land on PATH at once.
 let
@@ -31,5 +31,12 @@ pkgs.symlinkJoin {
     # tailscale ssh execs the system ssh, so openssh is needed too.
     (mkAdapter "foolfad-tailscale" [ tailscale-lite openssh-client ])
     (mkAdapter "foolfad-fly" [ pkgs.coreutils pkgs.flyctl ])
+    (mkAdapter "foolfad-azure-container" [
+      unstablePkgs.azure-cli
+      pkgs.coreutils
+      pkgs.gawk
+      pkgs.jq
+      pkgs.util-linux
+    ])
   ];
 }

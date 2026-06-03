@@ -2,6 +2,7 @@
   description = "Silly Tools, TiSslooly";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.automate-accounts = {
     url = "github:ToxicPine/automate-accounts";
     flake = false;
@@ -12,7 +13,7 @@
   };
 
   outputs =
-    { self, nixpkgs, automate-accounts, google-workspace-cli, ... }:
+    { self, nixpkgs, nixpkgs-unstable, automate-accounts, google-workspace-cli, ... }:
     let
       skills = import ./skills.nix { lib = nixpkgs.lib; };
 
@@ -20,12 +21,17 @@
         f:
         nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (
           system:
-          f (
-            import nixpkgs {
+          let
+            pkgs = import nixpkgs {
               localSystem.system = system;
               config.allowUnfree = true;
-            }
-          )
+            };
+            unstablePkgs = import nixpkgs-unstable {
+              localSystem.system = system;
+              config.allowUnfree = true;
+            };
+          in
+          f pkgs unstablePkgs
         );
 
       packagesWithSkills = [
@@ -69,15 +75,16 @@
     in
     {
       packages = forAllSystems (
-        pkgs:
+        pkgs: unstablePkgs:
         {
           prasskitte = pkgs.callPackage ./packages/prasskitte { };
           boondoggle = pkgs.callPackage ./packages/boondoggle { };
           foolfad = pkgs.callPackage ./packages/foolfad { };
           foolfad-config = pkgs.callPackage ./packages/foolfad-config { };
-          foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { };
+          foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { inherit unstablePkgs; };
           ghwc = pkgs.callPackage ./packages/ghwc { };
           ghwrc = pkgs.callPackage ./packages/ghwrc { };
+          hettron-azure = unstablePkgs.callPackage ./packages/hettron-azure {};
           vusperize = pkgs.callPackage ./packages/vusperize { };
           # poltrock = pkgs.callPackage ./packages/poltrock { };
           default = pkgs.writeShellApplication {

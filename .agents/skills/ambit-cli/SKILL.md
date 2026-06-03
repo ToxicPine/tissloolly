@@ -54,12 +54,14 @@ npx @cardelli/ambit auth login --ts-api-key tskey-api-... --fly-api-key fo1_...
 ```
 
 **Flags:**
+
 - `--ts-api-key <key>` — Tailscale API access token (tskey-api-...)
 - `--fly-api-key <token>` — Fly.io API token
 - `--org <org>` — Fly.io organization slug for this Tailscale key
 - `--json` — Output as JSON
 
 **What it does:**
+
 1. Fly.io: validates stored token or opens browser for interactive login
 2. Resolves the Fly identity scope: `fly:org:<slug>` or `fly:user:<email>` for `personal`
 3. Tailscale: validates the API key for that Fly identity or prompts for one, validates format + API, stores the key
@@ -75,6 +77,7 @@ npx @cardelli/ambit auth whoami --json
 ```
 
 **Flags:**
+
 - `--org <org>` — Fly.io organization slug to check
 - `--json` — Output as JSON
 
@@ -88,6 +91,7 @@ npx @cardelli/ambit auth logout --yes
 ```
 
 **Flags:**
+
 - `-y, --yes` — Skip confirmation prompt
 - `--json` — Output as JSON
 
@@ -102,6 +106,7 @@ npx @cardelli/ambit create lab --no-auto-approve
 ```
 
 **Flags:**
+
 - `--org <org>` — Fly.io organization slug
 - `--region <region>` — Fly.io region (default: `iad`)
 - `--tag <tag>` — Tailscale ACL tag for the router (default: `tag:ambit-<network>`)
@@ -111,6 +116,7 @@ npx @cardelli/ambit create lab --no-auto-approve
 - `--json` — Output as JSON (implies `--no-auto-approve`)
 
 **What it does:**
+
 1. Validates Fly.io auth and the Tailscale API key
 2. Auto-configures ACL: adds the tag to `tagOwners` and `autoApprovers` in the Tailscale policy (skipped with `--manual`)
 3. Checks for duplicate routers on the same network
@@ -130,6 +136,7 @@ Steps 8–11 are skipped when `--no-auto-approve` or `--json` is used.
 1. **Visual Editor** (recommended): Go to https://login.tailscale.com/admin/acls/visual/tags, click "Add tag", and add `tag:ambit-<network>` with `autogroup:admin` as the owner.
 
 2. **ACL File**: Go to https://login.tailscale.com/admin/acls/file and add to tagOwners:
+
 ```json
 "tagOwners": { "tag:ambit-<network>": ["autogroup:admin"] }
 ```
@@ -157,10 +164,12 @@ npx @cardelli/ambit share browsers group:team --org my-org
 ```
 
 **Flags:**
+
 - `--org <org>` — Fly.io organization slug
 - `--json` — Output as JSON
 
 **What it does:**
+
 1. Validates all members (fails with clear errors before touching the API)
 2. Discovers the router for the network (dies if not found)
 3. Gets the subnet from the router's machine
@@ -180,18 +189,21 @@ Deploys an app onto a private network. The network can be specified as part of t
 There are three mutually exclusive deployment modes:
 
 **Config mode** (default) — uses a local `fly.toml`:
+
 ```bash
 npx @cardelli/ambit deploy my-app.lab
 npx @cardelli/ambit deploy my-app.lab --config ./custom.toml
 ```
 
 **Image mode** — deploys a Docker image without fly.toml:
+
 ```bash
 npx @cardelli/ambit deploy my-app.lab --image registry.fly.io/my-app:latest
 npx @cardelli/ambit deploy my-app.lab --image registry.fly.io/my-app:latest --main-port 3000
 ```
 
 **Template mode** — fetches a template from a GitHub repository and deploys it:
+
 ```bash
 npx @cardelli/ambit deploy my-browser.lab --template ToxicPine/ambit-templates/chromatic
 npx @cardelli/ambit deploy my-browser.lab --template ToxicPine/ambit-templates/chromatic@v1.0
@@ -199,6 +211,7 @@ npx @cardelli/ambit deploy my-shell.lab --template ToxicPine/ambit-templates/wet
 ```
 
 **Flags:**
+
 - `--network <name>` — Target network (alternative to the `app.network` shorthand)
 - `--org <org>` — Fly.io organization
 - `--region <region>` — Primary region
@@ -210,6 +223,7 @@ npx @cardelli/ambit deploy my-shell.lab --template ToxicPine/ambit-templates/wet
 - `--json` — Output as JSON
 
 **Template reference format:**
+
 ```
 owner/repo                  Fetch repo root from the default branch
 owner/repo/path             Fetch subdirectory from the default branch
@@ -265,6 +279,7 @@ npx @cardelli/ambit destroy network lab --manual   # skip ACL cleanup
 ```
 
 **What it does:**
+
 1. Finds the router app for the network
 2. Clears split DNS configuration
 3. Removes the Tailscale device
@@ -274,6 +289,7 @@ npx @cardelli/ambit destroy network lab --manual   # skip ACL cleanup
 `--manual` skips the ACL cleanup step (step 5). Use it when the API token lacks ACL write permission, or when the user manages the policy themselves. If ACL cleanup fails with a 403, ambit warns and suggests re-running with `--manual`.
 
 After destroying, the user may still need to manually remove subnet-only `acls` rules for the destroyed network. Ambit removes access-rule references to `tag:ambit-<network>`, but subnet-only rules such as `fdaa:.../48:*` do not reference the tag. Tell them they can do this either:
+
 - **Visual editor**: Go to https://login.tailscale.com/admin/acls/visual and remove subnet rules from the Access Rules section
 - **ACL file**: Go to https://login.tailscale.com/admin/acls/file and remove subnet-only entries for the destroyed network from `acls`
 
@@ -297,6 +313,7 @@ npx @cardelli/ambit doctor app my-app.lab --json    # JSON output
 ```
 
 **Checks:**
+
 - Tailscale CLI installed
 - Tailscale connected (BackendState = Running)
 - Accept-routes enabled
@@ -318,12 +335,14 @@ npx @cardelli/ambit secrets deploy my-app.lab
 ```
 
 **Subcommands:**
+
 - `list` — Lists secret names and digests (not values)
 - `set` — Sets one or more secrets from positional `KEY=VALUE` args and/or `--env <file>` (positional args take precedence)
 - `unset` — Removes one or more secrets by name
 - `deploy` — Deploys staged secrets (from `set --stage` or `unset --stage`)
 
 **Flags:**
+
 - `--env <file>` — Load secrets from an env file (`set` only)
 - `--stage` — Stage changes without deploying (`set` and `unset` only)
 - `--org <org>` — Fly.io organization slug
@@ -341,6 +360,7 @@ npx @cardelli/ambit logs my-app.lab --region iad --json
 ```
 
 **Flags:**
+
 - `-r, --region <r>` — Filter by region
 - `--machine <id>` — Filter by machine ID
 - `-n, --no-tail` — Only fetch buffered logs (no streaming)
@@ -351,12 +371,12 @@ npx @cardelli/ambit logs my-app.lab --region iad --json
 
 Ready-to-deploy templates are available at `ToxicPine/ambit-templates`:
 
-| Template | Description |
-|----------|-------------|
+| Template                              | Description                                                                                                                           |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `ToxicPine/ambit-templates/chromatic` | Headless Chrome exposing Chrome DevTools Protocol on port 9222 — for AI agents or scripts that need a browser on the private network. |
-| `ToxicPine/ambit-templates/wetty` | A cloud devshell with a web terminal, persistent home directory, passwordless sudo, and auto start/stop. |
-| `ToxicPine/ambit-templates/opencode` | A private OpenCode web workspace — Nix-based environment with persistent home and auto start/stop. |
-| `ToxicPine/ambit-openclaw` | A self-hosted OpenClaw instance — a personal AI assistant you can talk to from WhatsApp, Telegram, Discord, and other chat apps. |
+| `ToxicPine/ambit-templates/wetty`     | A cloud devshell with a web terminal, persistent home directory, passwordless sudo, and auto start/stop.                              |
+| `ToxicPine/ambit-templates/opencode`  | A private OpenCode web workspace — Nix-based environment with persistent home and auto start/stop.                                    |
+| `ToxicPine/ambit-openclaw`            | A self-hosted OpenClaw instance — a personal AI assistant you can talk to from WhatsApp, Telegram, Discord, and other chat apps.      |
 
 ```bash
 npx @cardelli/ambit deploy my-browser.lab --template ToxicPine/ambit-templates/chromatic
@@ -368,6 +388,7 @@ npx @cardelli/ambit deploy my-gateway.lab --template ToxicPine/ambit-openclaw
 ## Common Workflows
 
 ### First-Time Setup
+
 ```bash
 # 1. Authenticate with Fly.io and Tailscale
 npx @cardelli/ambit auth login
@@ -398,6 +419,7 @@ npx @cardelli/ambit share lab group:team
 ```
 
 ### Sharing a Network with a Team
+
 ```bash
 npx @cardelli/ambit share browsers group:team                          # single group
 npx @cardelli/ambit share browsers group:team alice@example.com        # group + user
@@ -408,12 +430,14 @@ npx @cardelli/ambit share browsers group:team group:contractors        # multipl
 ```
 
 ### Deploy from a Template
+
 ```bash
 npx @cardelli/ambit deploy my-browser.lab --template ToxicPine/ambit-templates/chromatic
 # → headless Chrome at my-browser.lab:9222, reachable via CDP
 ```
 
 ### Debugging Connectivity
+
 ```bash
 npx @cardelli/ambit doctor network lab      # Check all the common failure points
 npx @cardelli/ambit status network lab      # Detailed network/router state
@@ -422,6 +446,7 @@ npx @cardelli/ambit list apps lab           # List all apps on a network
 ```
 
 ### Managing Secrets
+
 ```bash
 npx @cardelli/ambit secrets set my-app.lab API_KEY=abc123 DB_URL=postgres://...
 npx @cardelli/ambit secrets set my-app.lab --env .env     # Load from env file
@@ -430,6 +455,7 @@ npx @cardelli/ambit logs my-app.lab --no-tail             # Check app picked the
 ```
 
 ### Tearing Down
+
 ```bash
 npx @cardelli/ambit destroy app my-app.lab        # Remove an app
 npx @cardelli/ambit destroy network lab           # Remove the whole network
@@ -448,13 +474,16 @@ npx @cardelli/ambit destroy network lab           # Remove the whole network
 Ambit automatically manages `tagOwners` and `autoApprovers` in the Tailscale policy by default. It also removes tag-referencing `acls` access rules during `destroy network` so the tag owner can be removed cleanly. Subnet-only access rules are user-authored and may still need manual cleanup.
 
 **What ambit manages automatically (default):**
+
 - `tagOwners`: adds/removes the router tag on `create`/`destroy network`
 - `autoApprovers.routes`: adds/removes the subnet route on `create`/`destroy network`
 
 **What `ambit share` configures:**
-- `acls`: adds accept rules for a group → tag:53 and group → subnet:* (DNS + data access)
+
+- `acls`: adds accept rules for a group → tag:53 and group → subnet:\* (DNS + data access)
 
 **What the user must configure manually (when not using `ambit share`):**
+
 - `acls`: custom rules restricting which users/devices can reach the network (ambit prints the recommended format after `create`)
 
 When `ambit create` or `ambit destroy` fails with an ACL permission error, tell the user to re-run with `--manual` and then configure the policy themselves. They have two options:
@@ -467,11 +496,11 @@ Always surface the terminal output from `ambit create` that contains the real su
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| "ACL write permission denied" / HTTP 403 | The API token lacks `policy_file` write scope. For `create`/`destroy network` re-run with `--manual`. For `share`, use a token with `policy_file` scope. |
+| Symptom                                             | Fix                                                                                                                                                                                     |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "ACL write permission denied" / HTTP 403            | The API token lacks `policy_file` write scope. For `create`/`destroy network` re-run with `--manual`. For `share`, use a token with `policy_file` scope.                                |
 | "Tag not configured in tagOwners" (with `--manual`) | Add `tag:ambit-<network>` in the visual editor at https://login.tailscale.com/admin/acls/visual/tags, or add `"tag:ambit-<network>": ["autogroup:admin"]` to tagOwners in the ACL file. |
-| Router deployed but not reachable | Run `npx @cardelli/ambit doctor`. Check that accept-routes is enabled locally. |
-| "Timeout waiting for device" | Check router logs. Most common cause: expired or invalid Tailscale API key. |
-| Apps not resolving as `<app>.<network>` | Verify split DNS is configured: `npx @cardelli/ambit status network <name>`. Check the router is online in the tailnet. |
-| "Flyctl not found" | Install from https://fly.io/docs/flyctl/install/ |
+| Router deployed but not reachable                   | Run `npx @cardelli/ambit doctor`. Check that accept-routes is enabled locally.                                                                                                          |
+| "Timeout waiting for device"                        | Check router logs. Most common cause: expired or invalid Tailscale API key.                                                                                                             |
+| Apps not resolving as `<app>.<network>`             | Verify split DNS is configured: `npx @cardelli/ambit status network <name>`. Check the router is online in the tailnet.                                                                 |
+| "Flyctl not found"                                  | Install from https://fly.io/docs/flyctl/install/                                                                                                                                        |

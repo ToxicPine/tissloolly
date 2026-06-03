@@ -16,7 +16,9 @@ export const configureInputSchema = configureFlagSchema.extend({
 export type ConfigureInput = z.infer<typeof configureInputSchema>;
 export type GhInput = ConfigureInput;
 
-const checkArgvSchema = z.array(z.string()).length(0, "gh check does not accept arguments");
+const checkArgvSchema = z
+  .array(z.string())
+  .length(0, "gh check does not accept arguments");
 
 export function parseGhCheckArgs(argv: string[]): undefined {
   checkArgvSchema.parse(argv);

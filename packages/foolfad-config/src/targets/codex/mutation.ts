@@ -1,21 +1,25 @@
 import type { CliIo } from "../../lib/out.ts";
 import { err, ok, type Result } from "../../lib/result.ts";
-import { type CodexInput, codexInputToMutationShape, readCodexAuthJsonFile } from "./arg-schema.ts";
+import {
+  type CodexInput,
+  codexInputToMutationShape,
+  readCodexAuthJsonFile,
+} from "./arg-schema.ts";
 import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
 export type MutationPlanningError =
   | {
-    type: "missing-input";
-    detail: unknown;
-  }
+      type: "missing-input";
+      detail: unknown;
+    }
   | {
-    type: "invalid-mutation";
-    detail: unknown;
-  }
+      type: "invalid-mutation";
+      detail: unknown;
+    }
   | {
-    type: "local-codex-failed";
-    detail: unknown;
-  };
+      type: "local-codex-failed";
+      detail: unknown;
+    };
 
 export default async function completeCodexInput(
   input: CodexInput,
@@ -92,12 +96,22 @@ async function captureLocalCodexAuthJson(
       encoder.encode("Starting isolated `codex login --device-auth`.\n"),
     );
 
-    const login = await runCodex(["login", "--device-auth"], codexHome, home, "inherit");
+    const login = await runCodex(
+      ["login", "--device-auth"],
+      codexHome,
+      home,
+      "inherit",
+    );
     if (!login.ok) {
       return login;
     }
 
-    const status = await runCodex(["login", "status"], codexHome, home, "piped");
+    const status = await runCodex(
+      ["login", "status"],
+      codexHome,
+      home,
+      "piped",
+    );
     if (!status.ok) {
       return status;
     }
@@ -115,7 +129,9 @@ async function captureLocalCodexAuthJson(
   }
 }
 
-async function ensureScratchParent(): Promise<Result<string, MutationPlanningError>> {
+async function ensureScratchParent(): Promise<
+  Result<string, MutationPlanningError>
+> {
   const home = Deno.env.get("HOME");
   if (!home) {
     return err({
@@ -154,9 +170,10 @@ async function runCodex(
       stderr: stdio,
     });
 
-    const code = stdio === "inherit"
-      ? (await command.spawn().status).code
-      : (await command.output()).code;
+    const code =
+      stdio === "inherit"
+        ? (await command.spawn().status).code
+        : (await command.output()).code;
 
     if (code === 0) {
       return ok(undefined);

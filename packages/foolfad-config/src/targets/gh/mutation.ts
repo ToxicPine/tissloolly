@@ -5,17 +5,17 @@ import { type MutationPayload, mutationSchema } from "./mutation-schema.ts";
 
 export type MutationPlanningError =
   | {
-    type: "missing-input";
-    detail: unknown;
-  }
+      type: "missing-input";
+      detail: unknown;
+    }
   | {
-    type: "invalid-mutation";
-    detail: unknown;
-  }
+      type: "invalid-mutation";
+      detail: unknown;
+    }
   | {
-    type: "local-gh-failed";
-    detail: unknown;
-  };
+      type: "local-gh-failed";
+      detail: unknown;
+    };
 
 export default async function completeGhInput(
   input: GhInput,
@@ -71,7 +71,9 @@ async function getLocalGhToken(
   return await readLocalGhToken();
 }
 
-async function readLocalGhToken(): Promise<Result<string, MutationPlanningError>> {
+async function readLocalGhToken(): Promise<
+  Result<string, MutationPlanningError>
+> {
   try {
     const output = await new Deno.Command("gh", {
       args: ["auth", "token", "--hostname", "github.com"],
@@ -86,7 +88,9 @@ async function readLocalGhToken(): Promise<Result<string, MutationPlanningError>
 
     return err({
       type: "missing-input",
-      detail: new TextDecoder().decode(output.stderr).trim() || "local gh token is unavailable",
+      detail:
+        new TextDecoder().decode(output.stderr).trim() ||
+        "local gh token is unavailable",
     });
   } catch (error) {
     return err({
@@ -96,7 +100,9 @@ async function readLocalGhToken(): Promise<Result<string, MutationPlanningError>
   }
 }
 
-async function runInteractiveGhLogin(): Promise<Result<undefined, MutationPlanningError>> {
+async function runInteractiveGhLogin(): Promise<
+  Result<undefined, MutationPlanningError>
+> {
   try {
     const status = await new Deno.Command("gh", {
       args: ["auth", "login", "--hostname", "github.com", "--web"],

@@ -47,9 +47,16 @@ const codexStateLabels = {
 };
 
 async function main(): Promise<void> {
-  const io: CliIo = { stdin: Deno.stdin, stdout: Deno.stdout, stderr: Deno.stderr };
+  const io: CliIo = {
+    stdin: Deno.stdin,
+    stdout: Deno.stdout,
+    stderr: Deno.stderr,
+  };
   const parsed = parseCliArgs(Deno.args);
-  const out = new Out<JsonEnvelope>(parsed.ok ? parsed.value.json : parsed.error.json, io);
+  const out = new Out<JsonEnvelope>(
+    parsed.ok ? parsed.value.json : parsed.error.json,
+    io,
+  );
   if (!parsed.ok) {
     if (parsed.error.type === "help") {
       out.write(`${usage}\n`);
@@ -189,7 +196,9 @@ async function main(): Promise<void> {
         );
       }
 
-      const completePayload = gh.parseCompleteMutationPayload(mutationInput.value);
+      const completePayload = gh.parseCompleteMutationPayload(
+        mutationInput.value,
+      );
       if (!completePayload.ok && mode === "json") {
         fail(
           out,
@@ -413,7 +422,9 @@ async function main(): Promise<void> {
         );
       }
 
-      const completePayload = codex.parseCompleteMutationPayload(mutationInput.value);
+      const completePayload = codex.parseCompleteMutationPayload(
+        mutationInput.value,
+      );
       if (!completePayload.ok && mode === "json") {
         fail(
           out,
@@ -486,7 +497,9 @@ async function main(): Promise<void> {
         );
       }
 
-      const finalPayload = codex.mutationSchema.safeParse(candidatePayload.value);
+      const finalPayload = codex.mutationSchema.safeParse(
+        candidatePayload.value,
+      );
       if (!finalPayload.success) {
         const error = {
           type: "mutation-planning-failed" as const,

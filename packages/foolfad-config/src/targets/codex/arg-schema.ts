@@ -1,6 +1,10 @@
 import { parseArgs } from "node:util";
 import { z } from "zod";
-import { codexAuthJsonSchema, type MutationPayload, mutationSchema } from "./mutation-schema.ts";
+import {
+  codexAuthJsonSchema,
+  type MutationPayload,
+  mutationSchema,
+} from "./mutation-schema.ts";
 
 const configureFlagSchema = z.object({
   authJsonFile: z.string().min(1).optional(),
@@ -14,7 +18,9 @@ export const configureInputSchema = configureFlagSchema.extend({
 export type ConfigureInput = z.infer<typeof configureInputSchema>;
 export type CodexInput = ConfigureInput;
 
-const checkArgvSchema = z.array(z.string()).length(0, "codex check does not accept arguments");
+const checkArgvSchema = z
+  .array(z.string())
+  .length(0, "codex check does not accept arguments");
 
 export function parseCodexCheckArgs(argv: string[]): undefined {
   checkArgvSchema.parse(argv);
@@ -68,6 +74,8 @@ export function codexInputToMutationShape(input: CodexInput): unknown {
   }
 }
 
-export function readCodexAuthJsonFile(path: string): z.infer<typeof codexAuthJsonSchema> {
+export function readCodexAuthJsonFile(
+  path: string,
+): z.infer<typeof codexAuthJsonSchema> {
   return codexAuthJsonSchema.parse(JSON.parse(Deno.readTextFileSync(path)));
 }

@@ -1,6 +1,6 @@
 ---
 name: offload
-description: Use when the user wants to run a long or resource-heavy task on another computer so their local machine stays free, the work continues if they close their laptop or lose connection, and the result returns as a reviewable branch in their project. Use this skill also when no offload machine exists yet and the user needs help setting one up.
+description: Use when the user wants to run a long or resource-heavy task on another computer so their local machine stays free, the work continues if they close their laptop or lose connection, and the result returns as a reviewable branch in their project. Use this skill also when no offload target exists yet and the user needs help setting one up.
 argument-hint: <plain description of the work to hand off>
 ---
 
@@ -11,50 +11,74 @@ correct offload preserves the local project's behavior: it rebuilds the same env
 project's Nix flake, runs the requested work there, and returns the result as a branch in the user's
 project.
 
-You do NOT do the requested work yourself when this skill is invoked. You must start it on the target
-machine.
+You do NOT do the requested work yourself when this skill is invoked. You must start it on the
+remote target.
 
 > $ARGUMENTS
 
 Infer what you can from the project and request. Ask only when the choice matters: spending money,
-using an online account, choosing between valid target machines, or changing project configuration.
+using an online account, choosing between valid targets, or changing project configuration.
+
+## How To Speak To The User
+
+Keep the narration and explanation clear and direct. When describing setup, focus on what the user
+needs to do and what will happen, without introducing internal names, implementation details, or
+technical jargon such as `hettron`, Azure Container Apps, Easy Auth, resource groups, Nix,
+`foolfad`, or transport adapters. Use those terms only if the user requests more detail,
+demonstrates familiarity, when providing exact command lines, or when relaying an error that includes
+them.
+
+When no target is set up yet, say something like:
+
+> I can help you set up a remote computer on Microsoft's cloud, Azure. It will require logging in
+> with your Microsoft account, and after that the setup is handled for you. Azure may charge for the
+> remote computer while it exists.
+
+When explaining access to web pages or dev servers, say that the remote computer gets a normal
+public web address and the user's Microsoft sign-in protects it. Avoid implying that the user needs
+to understand Azure concepts or configure networking by hand.
 
 ## Supporting Skills
 
-Use supporting skills for specialized work: `foolfad` for the hand-off, `foolfad-config` for remote
-GitHub and assistant setup, and `ambit-cli` for provisioning or managing the private machine. If a
-skill is missing, try `npx skills --help` and `npx skills add <repo> --list`; `foolfad` and
-`foolfad-config` are in `ToxicPine/tissloolly`, and `ambit-cli` is in `ToxicPine/ambit-skills`.
+Use supporting skills for specialized work: `foolfad` for the hand-off and `foolfad-config` for
+remote GitHub and assistant setup. Provision the default target with `hettron-azure`, which deploys
+the Hettron container to Azure Container Apps. If a skill is missing, try `npx skills --help` and
+`npx skills add <repo> --list`; `foolfad`, `foolfad-config`, and `offload` are in
+`ToxicPine/tissloolly`.
 
 ## Tools
 
-Three custom commands are involved. Run only `foolfad` locally; it starts the other commands on the
-target machine.
+Four custom commands are involved. Run `hettron-azure` locally only when the Azure target needs to be
+created or repaired. Run `foolfad` locally for the actual hand-off; it starts the other commands in
+the target container.
 
+- **hettron-azure** runs locally. It authenticates to Azure through an isolated Azure CLI config,
+  selects a subscription, and deploys the fixed Hettron Azure Container Apps target with persistent
+  `/data` and `/nix` mounts. The target has a public Azure HTTPS URL guarded by Microsoft Easy Auth
+  for the selected account.
 - **foolfad** runs locally, inside the user's git project. It pushes the project's current state to
-  the target machine as branch `foolfad/<run-id>`, then starts the remote work. It does not pull
+  the target container as branch `foolfad/<run-id>`, then starts the remote work. It does not pull
   results back by itself. For a fixed command, that command must push its own changes. For an
   open-ended task, `boondoggle` commits and pushes the result.
-- **boondoggle** runs on the target machine, inside the copied project. It gives a coding assistant,
+- **boondoggle** runs in the target container, inside the copied project. It gives a coding assistant,
   such as Codex or Claude Code, a goal, lets it run until done, then commits changes and pushes them
   back on the run branch. Use it through `foolfad` when the task is open-ended, such as "make this
   feature work", rather than one exact command. Configure the assistant through `foolfad-config`; see
   `references/assistants-on-the-machine.md`.
-- **vusperize** runs on the target machine and wraps the work so it can send live progress pings,
+- **vusperize** runs in the target container and wraps the work so it can send live progress pings,
   for example to Telegram. Use it for long jobs or when the user asks for progress updates. If the
   user wants Telegram pings and they are not set up yet, see `references/setup-telegram.md`.
 
-The user runs only `foolfad`. It reaches the target through a transport (see "Find the machine") and
-starts `boondoggle` or `vusperize` there. The target machine keeps its files between restarts,
-rebuilds project dependencies fresh each run, and has the remote-side tools installed. If no target
-machine exists, set one up with `references/provision-remote-machine.md`. Otherwise assume one
-exists.
+`foolfad` reaches the target through a transport (see "Find the target") and starts `boondoggle` or
+`vusperize` there. The Hettron Azure target keeps its files between restarts, rebuilds project
+dependencies fresh each run, and has the remote-side tools installed. If no target exists, set one up
+with `references/provision-remote-machine.md`. Otherwise assume one exists.
 
 ## Running the hand-off
 
-**Use Nix for every local offload command.** Offloading works cleanly only when the target machine
-can rebuild the project environment from `flake.nix`. That keeps dependencies and behavior
-consistent after the work moves.
+**Use Nix for every local offload command.** Offloading works cleanly only when the target can
+rebuild the project environment from `flake.nix`. That keeps dependencies and behavior consistent
+after the work moves.
 
 If `nix` is installed, use it directly. If `nix` is missing, use the bundled helper
 `scripts/nixie-nix.sh` from this skill directory. The helper uses [Nixie](https://github.com/nixie-dev/nixie):
@@ -68,11 +92,12 @@ For the rest of this skill, read `nix ...` as either system `nix ...` or, when N
 `SKILL.md`.
 
 Prefer Nix-run invocations for the tissloolly tools in this workflow:
-`nix run github:ToxicPine/tissloolly#foolfad -- -- ...` locally, and
+`nix run github:ToxicPine/tissloolly#hettron-azure -- ...` for Azure setup,
+`nix run github:ToxicPine/tissloolly#foolfad -- -- ...` for hand-off, and
 `nix run github:ToxicPine/tissloolly#boondoggle` or
 `nix run github:ToxicPine/tissloolly#vusperize -- ...` on the target when those commands are not
-already installed. Transport adapters are in `foolfad-transports`; use
-`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale ...` when needed.
+already installed. Transport adapters are in `foolfad-transports`; for the default Azure target use
+`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-azure-container --hettron`.
 
 **Check the flake offload marker before doing anything with the flake.** Use `nix flake show` (or
 `nix flake show --json`) to look for top-level `x-offload`. Treat it as a hint, not a guarantee:
@@ -105,17 +130,21 @@ usually by adding or extending a `devShell` and `.envrc`. `foolfad` copies the w
 secret the devShell cannot provide must not travel as plaintext. Offer to encrypt it with `age` or
 `sops-nix`. Ask before changing anything.
 
-**Find the machine.** `foolfad` reaches it through `FOOLFAD_TRANSPORT` (for example
-`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-ssh box.lab`,
-`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale box.lab`, or
-`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-fly --app ... --machine ...`).
+**Find the target.** `foolfad` reaches it through `FOOLFAD_TRANSPORT`. The default target is the
+Hettron Azure Container App deployed by `hettron-azure`, reached with:
+
+```bash
+FOOLFAD_TRANSPORT='nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-azure-container --hettron'
+```
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
-- If not, check whether a machine already exists but is not selected. The provisioning doc shows how
-  to list machines. Set `FOOLFAD_TRANSPORT` to reach the chosen machine.
-- If no machine exists, tell the user setup means renting a small server from Fly.io, which costs
-  money. If they agree, follow `references/provision-remote-machine.md`.
-- If a machine exists but `foolfad` cannot reach the repo or push results back, use
+- If not, check whether `~/.hettron/azure/account.json` exists and has a configured subscription.
+  When it does, set `FOOLFAD_TRANSPORT` to the Azure transport above. The adapter derives the
+  Hettron resource group from that state only because `--hettron` is present. Pass `--subscription`,
+  `--resource-group`, or `--name` instead when targeting a non-Hettron Azure Container App.
+- If no Hettron Azure target exists, tell the user setup means deploying an Azure Container App,
+  which can cost money. If they agree, follow `references/provision-remote-machine.md`.
+- If the target exists but `foolfad` cannot reach the repo or push results back, use
   `foolfad-config` to check and configure its GitHub access.
 
 **Hand it off.**
@@ -128,17 +157,18 @@ secret the devShell cannot provide must not travel as plaintext. Offer to encryp
   an assistant, such as Codex or Claude Code, configured through `foolfad-config`
   (`references/assistants-on-the-machine.md`).
 
-The work starts inside the project directory on the target machine, so the environment (`devShell`,
+The work starts inside the project directory in the target container, so the environment (`devShell`,
 `.envrc`) loads on its own. Do not wrap the command in `cd` or `nix develop`. For long jobs or
-progress pings, wrap the command with `vusperize`, which runs alongside it on the target machine.
+progress pings, wrap the command with `vusperize`, which runs alongside it in the target container.
 
-**Report back.** Tell the user which branch receives the work, which machine ran it, and how to check
+**Report back.** Tell the user which branch receives the work, which target ran it, and how to check
 progress later. `foolfad-target` and `boondoggle-runs` are target-side skills. They are useful when
-the user talks to an agent on the target machine, for example over Telegram. If the user is local
+the user talks to an agent in the target container, for example over Telegram. If the user is local
 only, use `FOOLFAD_TRANSPORT` to run a target-side command that asks the remote agent or Codex to
 inspect the run and print the answer back locally.
 
 ## Follow-up questions
 
-For how to view a dev server on the machine, why an address won't load, or who else can see it, read
+For how to view a dev server through the public Hettron URL, why an address won't load, or who else
+can see it, read
 `references/faq.md` before answering.

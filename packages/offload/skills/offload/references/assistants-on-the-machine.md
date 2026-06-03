@@ -1,7 +1,7 @@
-# Coding assistants on the machine
+# Coding Assistants in the Target
 
-Open-ended hand-offs use `boondoggle` to run a coding assistant on the target machine. The assistant
-may be **Codex** or **Claude Code**, depending on machine and user setup. Configure the assistant on
+Open-ended hand-offs use `boondoggle` to run a coding assistant in the target. The assistant may be
+**Codex** or **Claude Code**, depending on target and user setup. Configure the assistant on
 the target once before using this path. If it is not configured, open-ended runs fail before they
 start.
 
@@ -19,7 +19,7 @@ For Codex, use the `codex` option/target in `foolfad-configure`. For Claude Code
 `claude-code` option/target. Follow the `foolfad-config` skill for any account prompts, device-code
 flows, API keys, or token handling. Do not duplicate those details in the offload skill.
 
-Setup is saved on the machine's persistent disk, so it should be one-time work for each assistant.
+Setup is saved on the target's persistent storage, so it should be one-time work for each assistant.
 
 After assistant setup, open-ended hand-offs will work:
 
@@ -31,8 +31,8 @@ nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'printf "%s" "<task>"
 
 Some assistants have remote-control or session-following features. After assistant setup, the user
 may be able to connect from another device, watch the run, send a nudge, or point it somewhere new
-without SSHing back into the machine. This is the "check in and steer" path: open-ended work keeps
-running on the machine, while the user can inspect or guide it from elsewhere.
+without SSHing into a box. This is the "check in and steer" path: open-ended work keeps running in
+the target, while the user can inspect or guide it from elsewhere.
 
 These features are assistant-specific. Enable them through that assistant's app, settings, or CLI
 docs rather than expecting a fixed offload command here. The offload-side requirement is the setup

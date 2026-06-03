@@ -16,8 +16,7 @@ export type ParseError = {
   message?: string;
 };
 
-export const usage =
-  `Usage: foolfad-configure [global-options] TARGET COMMAND [target-command-options]
+export const usage = `Usage: foolfad-configure [global-options] TARGET COMMAND [target-command-options]
 
 Configure a known target on a remote machine through a foolfad transport.
 
@@ -64,7 +63,11 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
       if (arg === "--transport") {
         const value = argv[index + 1];
         if (!value) {
-          return err({ type: "invalid-args", json, message: "--transport requires a value" });
+          return err({
+            type: "invalid-args",
+            json,
+            message: "--transport requires a value",
+          });
         }
         transport = value;
         index += 1;
@@ -74,7 +77,11 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
       if (arg.startsWith("--transport=")) {
         transport = arg.slice("--transport=".length);
         if (!transport) {
-          return err({ type: "invalid-args", json, message: "--transport requires a value" });
+          return err({
+            type: "invalid-args",
+            json,
+            message: "--transport requires a value",
+          });
         }
         continue;
       }
@@ -91,7 +98,11 @@ export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
   }
 
   if (!target || !command) {
-    return err({ type: "invalid-args", json, message: "TARGET and COMMAND are required" });
+    return err({
+      type: "invalid-args",
+      json,
+      message: "TARGET and COMMAND are required",
+    });
   }
 
   return ok({
