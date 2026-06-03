@@ -8,6 +8,8 @@ This is optional. Do it once per machine when the user wants either feature:
   staying at a terminal.
 
 Telegram is free. The bot token is a password. Treat it as secret and confirm before saving it.
+If local `nix` is missing, run the same `nix ...` arguments through the offload skill's bundled
+`scripts/nixie-nix.sh` helper from the skill directory.
 
 ## Plain Model
 

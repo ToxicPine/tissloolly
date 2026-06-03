@@ -52,12 +52,24 @@ exists.
 
 ## Running the hand-off
 
-**Nix must be installed on the user's local machine.** Offloading works cleanly only when the target
-machine can rebuild the project environment from `flake.nix`. That keeps dependencies and behavior
-consistent after the work moves. If `nix` is missing, point the user at
-https://install.determinate.systems and offer to run the installer. Prefer Nix-run invocations for
-the tissloolly tools in this workflow: `nix run github:ToxicPine/tissloolly#foolfad -- -- ...` locally,
-and `nix run github:ToxicPine/tissloolly#boondoggle` or
+**Use Nix for every local offload command.** Offloading works cleanly only when the target machine
+can rebuild the project environment from `flake.nix`. That keeps dependencies and behavior
+consistent after the work moves.
+
+If `nix` is installed, use it directly. If `nix` is missing, use the bundled helper
+`scripts/nixie-nix.sh` from this skill directory. The helper uses [Nixie](https://github.com/nixie-dev/nixie):
+it downloads a generated Nix wrapper into the user's cache, then that wrapper downloads a static Nix
+binary into the user's cache and runs Nix without a privileged install. Nixie is alpha software, so
+if the fallback fails or the user wants a normal permanent Nix setup, point them at
+https://install.determinate.systems and offer to run the installer.
+
+For the rest of this skill, read `nix ...` as either system `nix ...` or, when Nix is unavailable,
+`<skill-dir>/scripts/nixie-nix.sh ...`. Resolve `<skill-dir>` as the directory containing this
+`SKILL.md`.
+
+Prefer Nix-run invocations for the tissloolly tools in this workflow:
+`nix run github:ToxicPine/tissloolly#foolfad -- -- ...` locally, and
+`nix run github:ToxicPine/tissloolly#boondoggle` or
 `nix run github:ToxicPine/tissloolly#vusperize -- ...` on the target when those commands are not
 already installed. Transport adapters are in `foolfad-transports`; use
 `nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale ...` when needed.

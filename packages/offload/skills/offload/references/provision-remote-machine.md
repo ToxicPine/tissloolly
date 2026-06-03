@@ -8,9 +8,11 @@ This rents a real server and stores secrets. Confirm with the user before any st
 or saves a token, password, or key.
 
 The server is managed with **ambit** (`nix run github:ToxicPine/ambit -- ... --json`). In this
-workflow, prefer the Nix-run form over `npx`, and use `--json` on ambit commands. Ambit puts the
-server on a private network that only the user's devices can reach. The server starts from a
-ready-made image with the hand-off tools installed and persistent disk storage.
+workflow, prefer the Nix-run form over `npx`, and use `--json` on ambit commands. If local `nix` is
+missing, run the same arguments through the offload skill's bundled `scripts/nixie-nix.sh` helper
+from the skill directory. Ambit puts the server on a private network that only the user's devices can
+reach. The server starts from a ready-made image with the hand-off tools installed and persistent
+disk storage.
 
 Fly.io is the hosting service underneath. The user does not need to understand it or log into it
 directly; `ambit` handles it. Mention Fly.io only when the user must make a real decision, such as

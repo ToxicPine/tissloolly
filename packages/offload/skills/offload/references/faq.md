@@ -63,6 +63,8 @@ with the transport adapters from Nix:
 `nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-tailscale <host>`,
 `nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-ssh <host>`, or
 `nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-fly --app ... --machine ...`.
+If local `nix` is missing, run those same arguments through the offload skill's
+`scripts/nixie-nix.sh` helper.
 Any box reachable over SSH or Tailscale SSH can be the target. Set the transport to point at it.
 
 A hand-rolled box needs the pieces the provisioned image normally supplies:

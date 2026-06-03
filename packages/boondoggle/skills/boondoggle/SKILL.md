@@ -1,6 +1,6 @@
 ---
 name: boondoggle
-description: Use when launching a persistent Codex goal run with `boondoggle` from a prompt on stdin.
+description: "Use when launching a persistent Codex goal run with `boondoggle` from a prompt on stdin."
 ---
 
 # Boondoggle Workflow
