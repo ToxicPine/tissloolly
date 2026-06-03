@@ -4,13 +4,15 @@ import type {
   CommandName,
   DeployOutput,
   SecretSetOutput,
+  ShowOutput,
 } from "../domain/types.ts";
 
 export type CommandSuccessCases =
   | { command: "authenticate"; data: AuthOutput }
   | { command: "configure-billing"; data: BillingOutput }
   | { command: "deploy"; data: DeployOutput }
-  | { command: "set-secret"; data: SecretSetOutput };
+  | { command: "set-secret"; data: SecretSetOutput }
+  | { command: "show"; data: ShowOutput };
 
 export type AssertAllCommandsCovered =
   Exclude<CommandName, CommandSuccessCases["command"]> extends never ? true
@@ -46,7 +48,12 @@ export type CommandOutputEnvelope =
   | {
     ok: true;
     command: CommandName;
-    data: AuthOutput | BillingOutput | DeployOutput | SecretSetOutput;
+    data:
+      | AuthOutput
+      | BillingOutput
+      | DeployOutput
+      | SecretSetOutput
+      | ShowOutput;
   }
   | { ok: true; help: string }
   | { ok: false; command?: CommandName; error: CommandError };

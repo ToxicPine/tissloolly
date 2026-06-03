@@ -48,6 +48,15 @@ These are secrets the _target itself_ needs, so store them in the target secret 
 project. For the default Hettron Azure target, run these after `hettron-azure deploy`. Deploy already
 exposes the final Container Apps URL as the secret-backed `HOSTNAME` environment variable.
 
+Get the target resource group first:
+
+```bash
+hettron-azure --json show
+```
+
+Use `data.resourceGroupName` from the JSON when `data.setupState` is `container-app-deployed` or
+`resource-group-exists`.
+
 Set the Telegram secrets through `hettron-azure`; the command output does not include the values.
 Container Apps secret names are short, lowercase names and do not need to match the environment
 variable names:
@@ -61,7 +70,7 @@ Then expose those existing secrets as environment variables on the Container App
 
 ```bash
 az containerapp update \
-  --resource-group <resource-group-from-set-secret> \
+  --resource-group <resource-group-from-show> \
   --name hettron-v0 \
   --set-env-vars \
     TELEGRAM_BOT_TOKEN=secretref:telegram-bot-token \
@@ -79,7 +88,7 @@ the user's Telegram ID:
 hettron-azure set-secret --name telegram-home --value "$TELEGRAM_HOME_CHANNEL"
 
 az containerapp update \
-  --resource-group <resource-group-from-set-secret> \
+  --resource-group <resource-group-from-show> \
   --name hettron-v0 \
   --set-env-vars TELEGRAM_HOME_CHANNEL=secretref:telegram-home
 ```

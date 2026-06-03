@@ -28,8 +28,9 @@ Microsoft Easy Auth for the selected account, not by Tailscale or a private netw
 back/forward, and live connections (websockets) work through it, so it behaves like the real dev
 server after the user signs in with that Microsoft account.
 
-If the exact URL is unclear, query the Container App FQDN from Azure, then append the port path.
-`foolfad-target` can tell which port the run is listening on.
+If the exact URL is unclear, run `hettron-azure --json show` and use the `fqdn` field when
+`setupState` is `container-app-deployed`. The base URL is `https://<fqdn>`, and then append the port
+path. `foolfad-target` can tell which port the run is listening on.
 
 ## "I opened the address and nothing loads."
 
@@ -49,14 +50,13 @@ Check these common causes first:
 
 ## "Where do I find the Hettron URL?"
 
-For the default Azure target, query the Container App FQDN from the saved Hettron deployment:
+For the default Azure target, ask Hettron Azure for the saved deployment details:
 
 ```bash
-az containerapp show --resource-group <resource-group> --name hettron-v0 --query properties.configuration.ingress.fqdn --output tsv
+hettron-azure --json show
 ```
 
-If the resource group is lost, `foolfad-azure-container --hettron` derives it from
-`~/.hettron/azure/account.json`; `hettron-azure deploy` also reports it after deployment.
+When `data.setupState` is `container-app-deployed`, the Hettron URL is `https://<data.fqdn>`.
 
 ## "Can anyone else see my dev server?"
 

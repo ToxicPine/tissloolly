@@ -21,6 +21,7 @@ Commands:
   configure-billing   Select and validate an Azure subscription.
   deploy              Deploy the Hettron artifacts to Azure Container Apps.
   set-secret          Set a secret on the deployed Container App.
+  show                Show Hettron Azure setup state.
 `;
 
 export type CliMode = "interactive" | "json";
@@ -49,6 +50,12 @@ export type ParsedCli =
     mode: CliMode;
     command: "set-secret";
     partialInput: Partial<SecretSetInput>;
+  }
+  | {
+    ok: true;
+    mode: CliMode;
+    command: "show";
+    partialInput: Record<string, never>;
   }
   | {
     ok: false;
@@ -131,6 +138,9 @@ export function parseCliArgs(argv: string[]): ParsedCli {
         ? { ok: true, mode, command, partialInput: input.data }
         : { ok: false, json, command, message: input.error.message };
     }
+    case "show": {
+      return { ok: true, mode, command, partialInput: {} };
+    }
   }
 }
 
@@ -146,12 +156,14 @@ const COMMAND_FLAGS = {
     "configure-billing": ["subscription-id"],
     deploy: ["location"],
     "set-secret": ["name", "value"],
+    show: [],
   },
   json: {
     authenticate: ["account-email"],
     "configure-billing": ["subscription-id"],
     deploy: ["account-email", "subscription-id", "location"],
     "set-secret": ["account-email", "subscription-id", "name", "value"],
+    show: [],
   },
 } satisfies Record<CliMode, Record<CommandName, string[]>>;
 

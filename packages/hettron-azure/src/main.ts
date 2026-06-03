@@ -12,6 +12,7 @@ import {
   configureBilling,
   deploy,
   setSecret,
+  show,
 } from "./commands.ts";
 import { readAccountArtifact, writeAccountArtifact } from "./domain/state.ts";
 import {
@@ -21,6 +22,7 @@ import {
   type CommandName,
   DeployInput,
   SecretSetInput,
+  type ShowOutput,
 } from "./domain/types.ts";
 
 if (import.meta.main) {
@@ -48,73 +50,87 @@ export async function main(argv: string[]): Promise<void> {
   }
 
   try {
-    if (parsed.command === "authenticate") {
-      const input = parsed.mode === "json"
-        ? await completeAuthenticateJson(
-          await readJsonInputOrFlags(parsed.partialInput),
-        )
-        : await completeAuthenticateInteractive(parsed.partialInput, out);
-      const result = await authenticateAccount(input);
-      if (!result.ok) return renderFailure(out, parsed.command, result.error);
-      await writeAccountArtifact({
-        version: 1,
-        provider: "azure",
-        stage: "authenticated",
-        accountEmail: input.accountEmail,
-      });
-      out.write(`Authenticated ${result.value.accountEmail}`);
-      out.stage({ ok: true, command: parsed.command, data: result.value });
-      out.flush();
-      return;
+    switch (parsed.command) {
+      case "authenticate": {
+        const input = parsed.mode === "json"
+          ? await completeAuthenticateJson(
+            await readJsonInputOrFlags(parsed.partialInput),
+          )
+          : await completeAuthenticateInteractive(parsed.partialInput, out);
+        const result = await authenticateAccount(input);
+        if (!result.ok) return renderFailure(out, parsed.command, result.error);
+        await writeAccountArtifact({
+          version: 1,
+          provider: "azure",
+          stage: "authenticated",
+          accountEmail: input.accountEmail,
+        });
+        out.write(`Authenticated ${result.value.accountEmail}`);
+        out.stage({ ok: true, command: parsed.command, data: result.value });
+        out.flush();
+        return;
+      }
+      case "configure-billing": {
+        const input = parsed.mode === "json"
+          ? await completeBillingJson(
+            await readJsonInputOrFlags(parsed.partialInput),
+          )
+          : await completeBillingInteractive(parsed.partialInput, out);
+        const result = await configureBilling(input);
+        if (!result.ok) return renderFailure(out, parsed.command, result.error);
+        await writeAccountArtifact({
+          version: 1,
+          provider: "azure",
+          stage: "configured",
+          accountEmail: input.accountEmail,
+          subscriptionId: result.value.subscriptionId,
+        });
+        out.write(`Selected subscription ${result.value.subscriptionId}`);
+        out.stage({ ok: true, command: parsed.command, data: result.value });
+        out.flush();
+        return;
+      }
+      case "deploy": {
+        const input = parsed.mode === "json"
+          ? await completeDeployJson(
+            await readJsonInputOrFlags(parsed.partialInput),
+          )
+          : await completeDeployInteractive(parsed.partialInput);
+        const result = await deploy(input);
+        if (!result.ok) return renderFailure(out, parsed.command, result.error);
+        out.write(`Deployed resource group ${result.value.resourceGroupName}`);
+        out.stage({ ok: true, command: parsed.command, data: result.value });
+        out.flush();
+        return;
+      }
+      case "set-secret": {
+        const input = parsed.mode === "json"
+          ? await completeSecretSetJson(
+            await readJsonInputOrFlags(parsed.partialInput),
+          )
+          : await completeSecretSetInteractive(parsed.partialInput);
+        const result = await setSecret(input);
+        if (!result.ok) return renderFailure(out, parsed.command, result.error);
+        out.write(
+          `Set secret ${result.value.name} on resource group ${result.value.resourceGroupName}`,
+        );
+        out.stage({ ok: true, command: parsed.command, data: result.value });
+        out.flush();
+        return;
+      }
+      case "show": {
+        const result = await show(undefined);
+        if (!result.ok) return renderFailure(out, parsed.command, result.error);
+        renderShow(out, result.value);
+        out.stage({ ok: true, command: parsed.command, data: result.value });
+        out.flush();
+        return;
+      }
+      default: {
+        const _exhaustive: never = parsed;
+        return _exhaustive;
+      }
     }
-
-    if (parsed.command === "configure-billing") {
-      const input = parsed.mode === "json"
-        ? await completeBillingJson(
-          await readJsonInputOrFlags(parsed.partialInput),
-        )
-        : await completeBillingInteractive(parsed.partialInput, out);
-      const result = await configureBilling(input);
-      if (!result.ok) return renderFailure(out, parsed.command, result.error);
-      await writeAccountArtifact({
-        version: 1,
-        provider: "azure",
-        stage: "configured",
-        accountEmail: input.accountEmail,
-        subscriptionId: result.value.subscriptionId,
-      });
-      out.write(`Selected subscription ${result.value.subscriptionId}`);
-      out.stage({ ok: true, command: parsed.command, data: result.value });
-      out.flush();
-      return;
-    }
-
-    if (parsed.command === "set-secret") {
-      const input = parsed.mode === "json"
-        ? await completeSecretSetJson(
-          await readJsonInputOrFlags(parsed.partialInput),
-        )
-        : await completeSecretSetInteractive(parsed.partialInput);
-      const result = await setSecret(input);
-      if (!result.ok) return renderFailure(out, parsed.command, result.error);
-      out.write(
-        `Set secret ${result.value.name} on resource group ${result.value.resourceGroupName}`,
-      );
-      out.stage({ ok: true, command: parsed.command, data: result.value });
-      out.flush();
-      return;
-    }
-
-    const input = parsed.mode === "json"
-      ? await completeDeployJson(
-        await readJsonInputOrFlags(parsed.partialInput),
-      )
-      : await completeDeployInteractive(parsed.partialInput);
-    const result = await deploy(input);
-    if (!result.ok) return renderFailure(out, parsed.command, result.error);
-    out.write(`Deployed resource group ${result.value.resourceGroupName}`);
-    out.stage({ ok: true, command: parsed.command, data: result.value });
-    out.flush();
   } catch (error) {
     renderFailure(out, parsed.command, mapError(error));
   }
@@ -285,7 +301,20 @@ async function completeSecretSetInteractive(input: Partial<SecretSetInput>) {
 }
 
 async function readArtifact(): Promise<AccountArtifact> {
-  return await readAccountArtifact();
+  const result = await readAccountArtifact();
+  if (result.ok) {
+    return result.value;
+  }
+  if (result.error === "missing") {
+    throw commandError(
+      "invalid-account-state",
+      "Run authenticate before continuing.",
+    );
+  }
+  throw commandError(
+    "invalid-account-state",
+    "Hettron Azure account state is invalid.",
+  );
 }
 
 async function readJsonInputOrFlags(flags: unknown): Promise<unknown> {
@@ -344,6 +373,34 @@ function terminalChoice<T extends string>(
     throw commandError("invalid-input", "Selection is invalid.");
   }
   return choice;
+}
+
+function renderShow(out: Out, output: ShowOutput): void {
+  out.write(`Setup state: ${output.setupState}`);
+  switch (output.setupState) {
+    case "no-account":
+      return;
+    case "account-selected":
+      out.write(`Account: ${output.accountEmail}`);
+      return;
+    case "subscription-selected":
+      out.write(`Account: ${output.accountEmail}`);
+      out.write(`Subscription: ${output.subscriptionId}`);
+      return;
+    case "resource-group-exists":
+      out.write(`Account: ${output.accountEmail}`);
+      out.write(`Subscription: ${output.subscriptionId}`);
+      out.write(`Resource group: ${output.resourceGroupName}`);
+      return;
+    case "container-app-deployed":
+      out.write(`Account: ${output.accountEmail}`);
+      out.write(`Subscription: ${output.subscriptionId}`);
+      out.write(`Resource group: ${output.resourceGroupName}`);
+      out.write(`Container App: ${output.containerAppName}`);
+      out.write(`FQDN: ${output.fqdn}`);
+      out.write(`URL: https://${output.fqdn}`);
+      return;
+  }
 }
 
 function renderFailure(

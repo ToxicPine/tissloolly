@@ -11,9 +11,11 @@ hettron-azure authenticate
 hettron-azure configure-billing
 hettron-azure deploy
 hettron-azure set-secret --name telegram-bot-token --value "$TELEGRAM_BOT_TOKEN"
+hettron-azure show
 
 hettron-azure --json authenticate < input.json
 hettron-azure --json set-secret < secret.json
+hettron-azure --json show
 ```
 
 ## State
@@ -50,6 +52,10 @@ configuration.
 
 During deploy, the generated Container App URL is stored as the app-level secret
 `hostname` and exposed to the container as the `HOSTNAME` environment variable.
+Use `show` to inspect the local setup state and, after deployment, the Container
+App FQDN. In JSON mode, `show` returns a discriminated `setupState` value such
+as `no-account`, `account-selected`, `subscription-selected`,
+`resource-group-exists`, or `container-app-deployed`.
 
 Azure may still require first-time subscription or billing setup through the
 portal. Tenant policy may also block app registration or require administrator

@@ -1,14 +1,15 @@
 import z from "zod";
-import { AccountEmail, SubscriptionId } from "./types.ts";
+import {
+  AccountEmail,
+  ContainerAppName,
+  ResourceGroupName,
+  SubscriptionId,
+} from "./schemas.ts";
+
+export { ContainerAppName, ResourceGroupName };
 
 export const ProductSlug = z.literal("hettron-v0");
 export type ProductSlug = z.infer<typeof ProductSlug>;
-
-export const ResourceGroupName = z.string().regex(/^hettron-v0-[a-z0-9]{12}$/);
-export type ResourceGroupName = z.infer<typeof ResourceGroupName>;
-
-export const ContainerAppName = z.literal("hettron-v0");
-export type ContainerAppName = z.infer<typeof ContainerAppName>;
 
 export const ContainerAppsEnvironmentName = z.literal("hettron-v0-env");
 export type ContainerAppsEnvironmentName = z.infer<

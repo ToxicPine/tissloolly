@@ -2,6 +2,7 @@ import z from "zod";
 import { findEnabledSubscription, listAzureAccounts } from "./azure/account.ts";
 import { deployAzureResources } from "./azure/deploy.ts";
 import { setContainerAppSecret } from "./azure/secrets.ts";
+import { resourceGroupExists, showContainerAppFqdn } from "./azure/show.ts";
 import {
   AzMalformedOutputError,
   ConsoleError,
@@ -17,8 +18,10 @@ import type {
   DeployOutput,
   SecretSetInput,
   SecretSetOutput,
+  ShowOutput,
 } from "./domain/types.ts";
-import { resourceGroupForAccount } from "./domain/names.ts";
+import { CONTAINER_APP_NAME, resourceGroupForAccount } from "./domain/names.ts";
+import { readAccountArtifact } from "./domain/state.ts";
 import { ok, type Result } from "./lib/result.ts";
 
 const SUBSCRIPTION_SETUP_URL =
@@ -117,6 +120,64 @@ export const setSecret: CommandRunner<SecretSetInput, SecretSetOutput> = (
       input.value,
     );
     return { resourceGroupName, name: input.name };
+  });
+
+export const show: CommandRunner<void, ShowOutput> = () =>
+  runCore(async () => {
+    const artifactResult = await readAccountArtifact();
+    if (!artifactResult.ok && artifactResult.error === "missing") {
+      return { setupState: "no-account" };
+    }
+    if (!artifactResult.ok) {
+      throw commandError(
+        "invalid-account-state",
+        "Hettron Azure account state is invalid.",
+      );
+    }
+
+    const artifact = artifactResult.value;
+    if (artifact.stage === "authenticated") {
+      return {
+        setupState: "account-selected",
+        accountEmail: artifact.accountEmail,
+      };
+    }
+
+    const resourceGroupName = await resourceGroupForAccount(
+      artifact.accountEmail,
+      artifact.subscriptionId,
+    );
+    if (
+      !(await resourceGroupExists(artifact.subscriptionId, resourceGroupName))
+    ) {
+      return {
+        setupState: "subscription-selected",
+        accountEmail: artifact.accountEmail,
+        subscriptionId: artifact.subscriptionId,
+      };
+    }
+
+    const fqdn = await showContainerAppFqdn(
+      artifact.subscriptionId,
+      resourceGroupName,
+    );
+    if (!fqdn) {
+      return {
+        setupState: "resource-group-exists",
+        accountEmail: artifact.accountEmail,
+        subscriptionId: artifact.subscriptionId,
+        resourceGroupName,
+      };
+    }
+
+    return {
+      setupState: "container-app-deployed",
+      accountEmail: artifact.accountEmail,
+      subscriptionId: artifact.subscriptionId,
+      resourceGroupName,
+      containerAppName: CONTAINER_APP_NAME,
+      fqdn,
+    };
   });
 
 async function runCore<Output>(

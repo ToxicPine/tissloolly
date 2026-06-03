@@ -138,12 +138,14 @@ FOOLFAD_TRANSPORT='nix shell github:ToxicPine/tissloolly#foolfad-transports -c f
 ```
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
-- If not, check whether `~/.hettron/azure/account.json` exists and has a configured subscription.
-  When it does, set `FOOLFAD_TRANSPORT` to the Azure transport above. The adapter derives the
-  Hettron resource group from that state only because `--hettron` is present. Pass `--subscription`,
-  `--resource-group`, or `--name` instead when targeting a non-Hettron Azure Container App.
-- If no Hettron Azure target exists, tell the user setup means deploying an Azure Container App,
-  which can cost money. If they agree, follow `references/provision-remote-machine.md`.
+- If not, run `nix run github:ToxicPine/tissloolly#hettron-azure -- --json show`. When
+  `data.setupState` is `container-app-deployed`, set `FOOLFAD_TRANSPORT` to the Azure transport
+  above. The adapter derives the Hettron resource group from Hettron Azure state only because
+  `--hettron` is present. Pass `--subscription`, `--resource-group`, or `--name` instead when
+  targeting a non-Hettron Azure Container App.
+- If `show` reports any earlier `setupState`, tell the user setup is incomplete. Explain that setup
+  means deploying an Azure Container App, which can cost money. If they agree, follow
+  `references/provision-remote-machine.md`.
 - If the target exists but `foolfad` cannot reach the repo or push results back, use
   `foolfad-config` to check and configure its GitHub access.
 
@@ -171,4 +173,4 @@ inspect the run and print the answer back locally.
 
 For how to view a dev server through the public Hettron URL, why an address won't load, or who else
 can see it, read
-`references/faq.md` before answering.
+`references/frequently-asked-questions.md` before answering.

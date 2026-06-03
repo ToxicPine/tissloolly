@@ -2,20 +2,25 @@ import { join } from "@std/path";
 import { AccountArtifact } from "./types.ts";
 import { hettronAzureStateDir } from "../azure/stdio.ts";
 import { commandError } from "../cli/output.ts";
+import { err, ok, type Result } from "../lib/result.ts";
 
 export function accountArtifactPath(): string {
   return join(hettronAzureStateDir(), "account.json");
 }
 
-export async function readAccountArtifact(): Promise<AccountArtifact> {
+export type AccountArtifactReadError = "missing" | "invalid";
+
+export async function readAccountArtifact(): Promise<
+  Result<AccountArtifact, AccountArtifactReadError>
+> {
   try {
     const text = await Deno.readTextFile(accountArtifactPath());
-    return AccountArtifact.parse(JSON.parse(text));
-  } catch {
-    throw commandError(
-      "invalid-account-state",
-      "Run authenticate before continuing.",
-    );
+    return ok(AccountArtifact.parse(JSON.parse(text)));
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return err("missing");
+    }
+    return err("invalid");
   }
 }
 

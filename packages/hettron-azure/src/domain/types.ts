@@ -1,10 +1,26 @@
 import z from "zod";
+import {
+  AccountEmail,
+  AzureLocation,
+  ContainerAppName,
+  ResourceGroupName,
+  SubscriptionId,
+} from "./schemas.ts";
+
+export {
+  AccountEmail,
+  AzureLocation,
+  ContainerAppName,
+  ResourceGroupName,
+  SubscriptionId,
+};
 
 export const COMMANDS = [
   "authenticate",
   "configure-billing",
   "deploy",
   "set-secret",
+  "show",
 ] as const;
 export type CommandName = (typeof COMMANDS)[number];
 const COMMAND_SET: ReadonlySet<string> = new Set(COMMANDS);
@@ -12,15 +28,6 @@ const COMMAND_SET: ReadonlySet<string> = new Set(COMMANDS);
 export function isCommand(value: unknown): value is CommandName {
   return typeof value === "string" && COMMAND_SET.has(value);
 }
-
-export const AccountEmail = z.string().trim().toLowerCase().min(1);
-export type AccountEmail = z.infer<typeof AccountEmail>;
-
-export const SubscriptionId = z.string().trim().toLowerCase().uuid();
-export type SubscriptionId = z.infer<typeof SubscriptionId>;
-
-export const AzureLocation = z.string().trim().min(1);
-export type AzureLocation = z.infer<typeof AzureLocation>;
 
 export const SecretName = z
   .string()
@@ -63,9 +70,38 @@ export const SecretSetInput = z.object({
 });
 
 export const SecretSetOutput = z.object({
-  resourceGroupName: z.string().regex(/^hettron-v0-[a-z0-9]{12}$/),
+  resourceGroupName: ResourceGroupName,
   name: SecretName,
 });
+
+export const ShowOutput = z.discriminatedUnion("setupState", [
+  z.object({
+    setupState: z.literal("no-account"),
+  }),
+  z.object({
+    setupState: z.literal("account-selected"),
+    accountEmail: AccountEmail,
+  }),
+  z.object({
+    setupState: z.literal("subscription-selected"),
+    accountEmail: AccountEmail,
+    subscriptionId: SubscriptionId,
+  }),
+  z.object({
+    setupState: z.literal("resource-group-exists"),
+    accountEmail: AccountEmail,
+    subscriptionId: SubscriptionId,
+    resourceGroupName: ResourceGroupName,
+  }),
+  z.object({
+    setupState: z.literal("container-app-deployed"),
+    accountEmail: AccountEmail,
+    subscriptionId: SubscriptionId,
+    resourceGroupName: ResourceGroupName,
+    containerAppName: ContainerAppName,
+    fqdn: z.string().min(1),
+  }),
+]);
 
 export const AccountArtifact = z.discriminatedUnion("stage", [
   z.object({
@@ -91,4 +127,5 @@ export type DeployInput = z.infer<typeof DeployInput>;
 export type DeployOutput = z.infer<typeof DeployOutput>;
 export type SecretSetInput = z.infer<typeof SecretSetInput>;
 export type SecretSetOutput = z.infer<typeof SecretSetOutput>;
+export type ShowOutput = z.infer<typeof ShowOutput>;
 export type AccountArtifact = z.infer<typeof AccountArtifact>;

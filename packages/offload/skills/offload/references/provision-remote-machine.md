@@ -64,12 +64,22 @@ Tenant policy may block app registration, service principal creation, or selecte
 If `hettron-azure` reports a permission or admin-consent error, give the user the exact error and
 stop; an Azure tenant administrator may need to approve the deployment.
 
+After deploy, inspect the target:
+
+```bash
+nix run github:ToxicPine/tissloolly#hettron-azure -- --json show
+```
+
+Continue only when the JSON has `data.setupState` set to `container-app-deployed`. Use
+`data.resourceGroupName` for any follow-up Azure commands, and use `data.fqdn` as the public host.
+Dev servers in the target are viewed at `https://<fqdn>/<port>/`, for example
+`https://<fqdn>/3000/`.
+
 ## 4. Save the Foolfad Transport
 
 `foolfad` reaches Azure Container Apps through `foolfad-azure-container`, which uses
-`az containerapp exec`. For the Hettron target, pass `--hettron` so the adapter reads
-`~/.hettron/azure/account.json`, derives the resource group, and uses the `hettron-v0` Container App
-name.
+`az containerapp exec`. For the Hettron target, pass `--hettron` so the adapter uses the saved
+Hettron Azure state and fixed `hettron-v0` Container App name.
 
 Set:
 
