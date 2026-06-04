@@ -1,6 +1,6 @@
 ---
 name: ghwc-worktrees
-description: Clone GitHub repos on this machine with ghwc: canonical owner/repo casing, shared bare clone, branch-named sibling worktrees under ~/Projects.
+description: "Clone GitHub repos on this machine with ghwc: canonical owner/repo casing, shared bare clone, branch-named sibling worktrees under ~/Projects."
 ---
 
 # ghwc Worktrees
