@@ -16,7 +16,8 @@ export type ParseError = {
   message?: string;
 };
 
-export const usage = `Usage: foolfad-configure [global-options] TARGET COMMAND [target-command-options]
+export const usage =
+  `Usage: foolfad-configure [global-options] TARGET COMMAND [target-command-options]
 
 Configure a known target on a remote machine through a foolfad transport.
 
@@ -33,11 +34,14 @@ Targets:
   gh configure [--token TOKEN] [--git-user-name NAME] [--git-user-email EMAIL]
   codex check
   codex configure [--auth-json-file PATH]
+  hermes check
+  hermes configure [--config-yaml-file PATH] [--env-file PATH] [--soul-md-file PATH]
 
 Examples:
   foolfad-configure --transport "foolfad-ssh box" gh check
   foolfad-configure --json --transport "foolfad-ssh box" gh configure --token "$GITHUB_TOKEN"
   foolfad-configure --transport "foolfad-ssh box" codex check
+  foolfad-configure --transport "foolfad-ssh box" hermes check
 `;
 
 export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {
