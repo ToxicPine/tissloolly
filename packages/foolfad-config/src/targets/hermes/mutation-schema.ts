@@ -4,6 +4,7 @@ export const hermesArtifactPathSchema = z.enum([
   "config.yaml",
   ".env",
   "SOUL.md",
+  "auth.json",
 ]);
 
 export const hermesArtifactFileSchema = z.object({

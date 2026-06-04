@@ -17,6 +17,7 @@ hermes_home="${HERMES_HOME:-${HOME}/.hermes}"
 config_yaml="${hermes_home}/config.yaml"
 env_file="${hermes_home}/.env"
 soul_md="${hermes_home}/SOUL.md"
+auth_json="${hermes_home}/auth.json"
 
 if [[ -e "${hermes_home}" && ! -d "${hermes_home}" ]]; then
   missing+=("hermes-home-creatable")
@@ -42,6 +43,10 @@ fi
 
 if [[ -e "${soul_md}" && ! -w "${soul_md}" ]]; then
   missing+=("hermes-soul-writable")
+fi
+
+if [[ -e "${auth_json}" && ! -w "${auth_json}" ]]; then
+  missing+=("hermes-auth-writable")
 fi
 
 if [[ "${#missing[@]}" -eq 0 ]]; then
@@ -70,6 +75,9 @@ for name in "${missing[@]}"; do
       ;;
     hermes-soul-writable)
       detail="Hermes SOUL.md is not writable"
+      ;;
+    hermes-auth-writable)
+      detail="Hermes auth.json is not writable"
       ;;
     *)
       detail="unavailable"

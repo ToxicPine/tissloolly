@@ -20,7 +20,7 @@ foolfad-configure gh configure
 ```
 
 Each target owns its own checks, mutation options, and reporting fields. The current targets are
-`gh` and `codex`.
+`gh`, `codex`, and `hermes`.
 
 ## GitHub Target
 
@@ -97,6 +97,34 @@ handoff for this target. Never print or paste Codex auth artifact contents in th
 Report only whether configuration succeeded and the resulting `authenticated`, `codexHome`,
 `authJsonPresent`, and `loginStatus` fields.
 
+## Hermes Target
+
+The `hermes` target checks or configures Hermes files in the remote `HERMES_HOME` or default
+`~/.hermes`.
+
+Use `hermes check` when the user asks whether remote Hermes is configured:
+
+```bash
+foolfad-configure --transport "foolfad-ssh box" hermes check
+```
+
+Use `hermes configure` to run the local Hermes setup wizard under isolated scratch `HOME` and
+`HERMES_HOME` values, capture `config.yaml`, `.env`, and `SOUL.md`, and apply them remotely:
+
+```bash
+foolfad-configure --transport "foolfad-ssh box" hermes configure
+```
+
+Use `hermes auth` to run the local Nous OAuth device-code flow under isolated scratch `HOME` and
+`HERMES_HOME` values, capture scratch `auth.json`, and apply it remotely:
+
+```bash
+foolfad-configure --transport "foolfad-ssh box" hermes auth
+```
+
+Neither command may read, overwrite, refresh, or log out the user's ordinary host `~/.hermes`
+credentials. Never print or paste Hermes `auth.json` contents in the final response.
+
 ## Useful Options
 
 - `--transport COMMAND STRING` selects the remote transport for one invocation.
@@ -108,6 +136,10 @@ Report only whether configuration succeeded and the resulting `authenticated`, `
 - `gh configure --git-user-email EMAIL` sets remote global `git config user.email`.
 - `codex configure --auth-json-file PATH` supplies a Codex `auth.json` artifact for noninteractive
   configuration.
+- `hermes configure --config-yaml-file PATH --env-file PATH` supplies Hermes config artifacts for
+  noninteractive configuration.
+- `hermes auth --auth-json-file PATH` supplies a Hermes `auth.json` artifact for noninteractive
+  authentication.
 
 ## What To Report
 
@@ -131,3 +163,12 @@ After `codex check` or `codex configure`, report:
 - The Codex home path, whether `auth.json` is present, and the login status text when shown.
 
 Never include `auth.json` contents.
+
+After `hermes check`, `hermes configure`, or `hermes auth`, report:
+
+- The target and command, e.g. `hermes auth`.
+- The transport target, e.g. `foolfad-ssh box`.
+- The Hermes home path.
+- Whether `config.yaml`, `.env`, `SOUL.md`, and `auth.json` are present.
+
+Never include Hermes `auth.json` contents.

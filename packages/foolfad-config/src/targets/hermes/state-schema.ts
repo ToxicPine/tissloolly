@@ -6,6 +6,7 @@ export const hermesStateSchema = z.object({
   configYamlPresent: z.boolean(),
   envFilePresent: z.boolean(),
   soulMdPresent: z.boolean(),
+  authJsonPresent: z.boolean(),
 });
 
 export type HermesState = z.infer<typeof hermesStateSchema>;

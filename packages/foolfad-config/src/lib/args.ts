@@ -36,12 +36,14 @@ Targets:
   codex configure [--auth-json-file PATH]
   hermes check
   hermes configure [--config-yaml-file PATH] [--env-file PATH] [--soul-md-file PATH]
+  hermes auth [--provider PROVIDER] [--auth-json-file PATH]
 
 Examples:
   foolfad-configure --transport "foolfad-ssh box" gh check
   foolfad-configure --json --transport "foolfad-ssh box" gh configure --token "$GITHUB_TOKEN"
   foolfad-configure --transport "foolfad-ssh box" codex check
   foolfad-configure --transport "foolfad-ssh box" hermes check
+  foolfad-configure --transport "foolfad-ssh box" hermes auth
 `;
 
 export function parseCliArgs(argv: string[]): Result<CliOptions, ParseError> {

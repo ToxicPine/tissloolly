@@ -21,8 +21,11 @@ foolfad-configure --transport "foolfad-ssh box" codex configure
 foolfad-configure --json --transport "foolfad-ssh box" codex configure --auth-json-file ./auth.json
 foolfad-configure --transport "foolfad-ssh box" hermes check
 foolfad-configure --transport "foolfad-ssh box" hermes configure
+foolfad-configure --transport "foolfad-ssh box" hermes auth
 foolfad-configure --json --transport "foolfad-ssh box" hermes configure \
   --config-yaml-file ./config.yaml --env-file ./.env
+foolfad-configure --json --transport "foolfad-ssh box" hermes auth \
+  --auth-json-file ./auth.json
 ```
 
 The `codex` target configures remote Codex CLI auth by applying the same `auth.json` artifact Codex
@@ -37,3 +40,7 @@ locally under isolated scratch `HOME` and `HERMES_HOME` values, clears inherited
 state for that child, reads only the scratch Hermes artifacts, removes the scratch home, and applies
 those artifacts remotely. It does not read or mutate the host's ordinary `~/.hermes` credentials or
 config.
+
+Hermes OAuth credentials are a separate `auth.json` artifact. `hermes auth` runs
+`hermes auth add nous --type oauth --no-browser` locally under the same isolated scratch home rules,
+reads only the scratch `auth.json`, removes the scratch home, and applies that artifact remotely.

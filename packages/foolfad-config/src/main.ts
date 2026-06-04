@@ -53,6 +53,7 @@ const hermesStateLabels = {
   configYamlPresent: "hermes config.yaml present",
   envFilePresent: "hermes .env present",
   soulMdPresent: "hermes SOUL.md present",
+  authJsonPresent: "hermes auth.json present",
 };
 
 async function main(): Promise<void> {

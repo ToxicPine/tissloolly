@@ -13,12 +13,23 @@ const configureFlagSchema = z.object({
 });
 type ConfigureFlags = z.infer<typeof configureFlagSchema>;
 
+const authFlagSchema = z.object({
+  provider: z.string().min(1).default("nous"),
+  authJsonFile: z.string().min(1).optional(),
+});
+type AuthFlags = z.infer<typeof authFlagSchema>;
+
 export const configureInputSchema = configureFlagSchema.extend({
   type: z.literal("configure"),
 });
 
+export const authInputSchema = authFlagSchema.extend({
+  type: z.literal("auth"),
+});
+
 export type ConfigureInput = z.infer<typeof configureInputSchema>;
-export type HermesInput = ConfigureInput;
+export type AuthInput = z.infer<typeof authInputSchema>;
+export type HermesInput = ConfigureInput | AuthInput;
 
 const checkArgvSchema = z
   .array(z.string())
@@ -35,6 +46,11 @@ export function parseHermesInput(command: string, argv: string[]): HermesInput {
       return configureInputSchema.parse({
         type: "configure",
         ...parseConfigureFlags(argv),
+      });
+    case "auth":
+      return authInputSchema.parse({
+        type: "auth",
+        ...parseAuthFlags(argv),
       });
     default:
       throw new Error(`unknown hermes command: ${command}`);
@@ -66,6 +82,23 @@ function parseConfigureFlags(argv: string[]): ConfigureFlags {
   });
 }
 
+function parseAuthFlags(argv: string[]): AuthFlags {
+  const parsed = parseArgs({
+    args: argv,
+    allowPositionals: false,
+    strict: true,
+    options: {
+      provider: { type: "string" },
+      "auth-json-file": { type: "string" },
+    },
+  });
+
+  return authFlagSchema.parse({
+    provider: parsed.values.provider,
+    authJsonFile: parsed.values["auth-json-file"],
+  });
+}
+
 export function hermesInputToMutationShape(input: HermesInput): unknown {
   switch (input.type) {
     case "configure": {
@@ -81,6 +114,22 @@ export function hermesInputToMutationShape(input: HermesInput): unknown {
         files,
       };
     }
+    case "auth":
+      if (!input.authJsonFile) {
+        throw new Error(
+          "hermes auth requires --auth-json-file for noninteractive configuration",
+        );
+      }
+
+      return {
+        type: "configure",
+        files: [
+          {
+            path: "auth.json",
+            content: Deno.readTextFileSync(input.authJsonFile),
+          },
+        ],
+      };
   }
 }
 
