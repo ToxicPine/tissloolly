@@ -4,6 +4,7 @@ import {
   AzMalformedOutputError,
   ConsoleError,
   runAzInteractive,
+  runAzText,
 } from "./azure/stdio.ts";
 import { probeCachedAzureSubscriptions } from "./azure/subscription_probe.ts";
 import { parseCliArgs, usage } from "./cli/args.ts";
@@ -151,6 +152,10 @@ async function completeAuthenticateInteractive(
   let accounts = await listAzureAccounts();
   if (accounts.length === 0) {
     try {
+      await runAzText(
+        ["config", "set", "core.login_experience_v2=off"],
+        "none",
+      );
       await runAzInteractive([
         "login",
         "--use-device-code",
