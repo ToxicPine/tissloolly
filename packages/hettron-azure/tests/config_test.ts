@@ -1,6 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { join } from "@std/path";
 import { show } from "../src/commands.ts";
+import {
+  probeCachedAzureSubscriptions,
+  selectAzureManagementAccessToken,
+} from "../src/azure/subscription_probe.ts";
 import { parseCliArgs } from "../src/cli/args.ts";
 import { resourceGroupForAccount } from "../src/domain/names.ts";
 import { SecretSetInput, ShowOutput } from "../src/domain/types.ts";
@@ -141,6 +145,80 @@ Deno.test("ShowOutput parses setup states", () => {
       url: `https://${fqdn}`,
     })),
   );
+});
+
+Deno.test("selectAzureManagementAccessToken selects newest unexpired ARM token", () => {
+  const oldToken = jwt({ aud: "https://management.azure.com/", exp: 20 });
+  const latestToken = jwt({
+    aud: "https://management.core.windows.net/",
+    exp: 30,
+  });
+  const graphToken = jwt({ aud: "https://graph.microsoft.com/", exp: 40 });
+  const expiredToken = jwt({ aud: "https://management.azure.com/", exp: 5 });
+
+  assertEquals(
+    selectAzureManagementAccessToken(
+      {
+        AccessToken: {
+          old: { secret: oldToken },
+          latest: { secret: latestToken },
+          graph: { secret: graphToken },
+          expired: { secret: expiredToken },
+        },
+      },
+      10,
+    ),
+    latestToken,
+  );
+});
+
+Deno.test("probeCachedAzureSubscriptions reads Hettron Azure token cache", async () => {
+  await withHettronState(async (home) => {
+    const token = jwt({ aud: "https://management.azure.com/", exp: 30 });
+    const configDir = join(home, ".hettron", "azure", "az-config");
+    await Deno.mkdir(configDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(configDir, "msal_token_cache.json"),
+      JSON.stringify({ AccessToken: { arm: { secret: token } } }),
+    );
+
+    const requests: string[] = [];
+    const result = await probeCachedAzureSubscriptions({
+      nowSeconds: 10,
+      fetch: (input, init) => {
+        requests.push(String(input));
+        assertEquals(
+          (init?.headers as Record<string, string>).Authorization,
+          `Bearer ${token}`,
+        );
+        if (String(input).includes("/tenants?")) {
+          return Promise.resolve(jsonResponse({ value: [{ id: "tenant" }] }));
+        }
+        if (String(input).includes("/subscriptions?")) {
+          return Promise.resolve(jsonResponse({ value: [] }));
+        }
+        return Promise.resolve(new Response(null, { status: 404 }));
+      },
+    });
+
+    assertEquals(result, {
+      ok: true,
+      value: { tenantCount: 1, subscriptionCount: 0 },
+    });
+    assertEquals(requests.length, 2);
+  });
+});
+
+Deno.test("probeCachedAzureSubscriptions reports missing token cache", async () => {
+  await withHettronState(async () => {
+    assertEquals(await probeCachedAzureSubscriptions({ nowSeconds: 10 }), {
+      ok: false,
+      error: {
+        type: "missing-cache",
+        message: "Azure CLI token cache was not found.",
+      },
+    });
+  });
 });
 
 Deno.test("show reports no-account when state is missing", async () => {
@@ -295,4 +373,25 @@ function restoreEnv(name: string, value: string | undefined): void {
     return;
   }
   Deno.env.set(name, value);
+}
+
+function jwt(payload: Record<string, unknown>): string {
+  return [
+    base64UrlJson({ alg: "none" }),
+    base64UrlJson(payload),
+    "signature",
+  ].join(".");
+}
+
+function base64UrlJson(value: unknown): string {
+  return btoa(JSON.stringify(value))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+}
+
+function jsonResponse(value: unknown): Response {
+  return new Response(JSON.stringify(value), {
+    headers: { "Content-Type": "application/json" },
+  });
 }

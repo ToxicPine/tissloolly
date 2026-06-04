@@ -5,6 +5,7 @@ import {
   ConsoleError,
   runAzInteractive,
 } from "./azure/stdio.ts";
+import { probeCachedAzureSubscriptions } from "./azure/subscription_probe.ts";
 import { parseCliArgs, usage } from "./cli/args.ts";
 import { type CommandError, commandError, Out } from "./cli/output.ts";
 import {
@@ -24,6 +25,9 @@ import {
   SecretSetInput,
   type ShowOutput,
 } from "./domain/types.ts";
+
+const SUBSCRIPTION_SETUP_URL =
+  "https://azure.microsoft.com/en-us/pricing/purchase-options/azure-account";
 
 if (import.meta.main) {
   await main(Deno.args);
@@ -146,7 +150,20 @@ async function completeAuthenticateInteractive(
 ) {
   let accounts = await listAzureAccounts();
   if (accounts.length === 0) {
-    await runAzInteractive(["login", "--use-device-code"]);
+    try {
+      await runAzInteractive([
+        "login",
+        "--use-device-code",
+        "--allow-no-subscriptions",
+      ]);
+    } catch (error) {
+      if (error instanceof ConsoleError) {
+        // Azure CLI can fail login after caching an ARM token, and its error output
+        // does not reliably distinguish "no subscription" from other login failures.
+        throw await mapFailedInteractiveLogin(error);
+      }
+      throw error;
+    }
     accounts = await listAzureAccounts();
   }
   if (input.accountEmail) {
@@ -162,6 +179,59 @@ async function completeAuthenticateInteractive(
     (email) => email,
   );
   return AuthInput.parse({ accountEmail });
+}
+
+async function mapFailedInteractiveLogin(
+  error: ConsoleError,
+): Promise<CommandError> {
+  try {
+    const probe = await probeCachedAzureSubscriptions();
+    if (!probe.ok) {
+      // unknown-error case: probe failed
+      return commandError(
+        "unknown-error",
+        "Azure CLI login failed and Hettron could not verify Azure subscriptions from the token cache.",
+        {
+          loginCode: error.code,
+          loginStderr: error.stderr.trim(),
+          probeError: probe.error ?? "Unknown probe error",
+        },
+      );
+    }
+    if (probe.value.subscriptionCount === 0) {
+      // no subscriptions case
+      return commandError(
+        "subscription-setup-required",
+        "No enabled Azure subscription is visible.",
+        {
+          setupUrl: SUBSCRIPTION_SETUP_URL,
+        },
+      );
+    }
+    // generic error code case
+    return commandError(
+      "az-returned-error-code",
+      "Azure CLI login failed after Hettron confirmed an Azure subscription is visible.",
+      {
+        code: error.code,
+        stderr: error.stderr.trim(),
+        tenantCount: probe.value.tenantCount,
+        subscriptionCount: probe.value.subscriptionCount,
+      },
+    );
+  } catch (probeError) {
+    return commandError(
+      "unknown-error",
+      "Azure CLI login failed.",
+      {
+        loginCode: error.code,
+        loginStderr: error.stderr.trim(),
+        probeError: probeError instanceof Error
+          ? { name: probeError.name, message: probeError.message }
+          : String(probeError),
+      },
+    );
+  }
 }
 
 async function completeBillingJson(input: unknown) {
