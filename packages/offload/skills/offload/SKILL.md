@@ -162,11 +162,10 @@ Plain SSH and Tailscale transports are still valid for user-managed boxes, but F
 when this skill provisions the machine.
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
-- If not, check whether a Fly target already exists but is not selected. Use
-  `<offload-nix> fly status -a <app>` and
-  `<offload-nix> fly machine list -a <app>` if the app name is known; otherwise
-  use `<offload-nix> fly apps list` and ask only when there are multiple
-  plausible choices. Set `FOOLFAD_TRANSPORT` to reach the chosen target.
+- If `FOOLFAD_TRANSPORT` is not set, fail fast. Do not use `fly`, `flyctl`,
+  `foolfad-fly`, or any provider-specific discovery command to search for a
+  possible target. Tell the user there is no remote machine configured, and
+  offer to help find an existing machine or set one up before offloading.
 - For an existing Fly app, check `<offload-nix> fly secrets list -a <app>` and set a generated
   `NESTAIL_AUTH_SECRET` if missing. Tell the user this may restart the Fly Machine.
 - If no target exists, tell the user setup means renting a small server from Fly.io, which costs
