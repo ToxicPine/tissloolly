@@ -81,7 +81,7 @@
           boondoggle = pkgs.callPackage ./packages/boondoggle { };
           foolfad = pkgs.callPackage ./packages/foolfad { };
           foolfad-config = pkgs.callPackage ./packages/foolfad-config { };
-          foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { inherit unstablePkgs; };
+          foolfad-transports = pkgs.callPackage ./packages/foolfad-transports { };
           ghwc = pkgs.callPackage ./packages/ghwc { };
           ghwrc = pkgs.callPackage ./packages/ghwrc { };
           hettron-azure = unstablePkgs.callPackage ./packages/hettron-azure {};

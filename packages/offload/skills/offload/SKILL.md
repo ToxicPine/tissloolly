@@ -23,81 +23,107 @@ using an online account, choosing between valid targets, or changing project con
 
 Keep the narration and explanation clear and direct. When describing setup, focus on what the user
 needs to do and what will happen, without introducing internal names, implementation details, or
-technical jargon such as `hettron`, Azure Container Apps, Easy Auth, resource groups, Nix,
-`foolfad`, or transport adapters. Use those terms only if the user requests more detail,
-demonstrates familiarity, when providing exact command lines, or when relaying an error that includes
-them.
+technical jargon such as Fly Machines, Nix, `foolfad`, Nixie, or transport adapters. Use those terms
+only if the user requests more detail, demonstrates familiarity, when providing exact command lines,
+or when relaying an error that includes them.
 
 When no target is set up yet, say something like:
 
-> I can help you set up a remote computer on Microsoft's cloud, Azure. It will require logging in
-> with your Microsoft account, and after that the setup is handled for you. Azure may charge for the
-> remote computer while it exists.
+> I can help you set up a remote computer on Fly.io. It will require logging in with your Fly.io
+> account, and Fly may charge for the remote computer while it exists.
 
-When explaining access to web pages or dev servers, say that the remote computer gets a normal
-public web address and the user's Microsoft sign-in protects it. Avoid implying that the user needs
-to understand Azure concepts or configure networking by hand.
+When explaining access to web pages or dev servers, say that the remote computer gets a public web
+address and Nestail auth protects the shareable links. Avoid implying that the user needs to
+understand Fly internals or configure networking by hand.
 
 ## Supporting Skills
 
-Use supporting skills for specialized work: `foolfad` for the hand-off and `foolfad-config` for
-remote GitHub and assistant setup. Provision the default target with `hettron-azure`, which deploys
-the Hettron container to Azure Container Apps. If a skill is missing, try `npx skills --help` and
-`npx skills add <repo> --list`; `foolfad`, `foolfad-config`, and `offload` are in
-`ToxicPine/tissloolly`.
+Use supporting skills for specialized work: `foolfad` for the hand-off and `foolfad-config` for remote
+GitHub and assistant setup. Provision and manage the target with the official Fly.io CLI (`fly`).
+If a skill is missing, try `npx skills --help` and `npx skills add <repo> --list`; `foolfad` and
+`foolfad-config` are in `ToxicPine/tissloolly`.
 
 ## Tools
 
-Four custom commands are involved. Run `hettron-azure` locally only when the Azure target needs to be
-created or repaired. Run `foolfad` locally for the actual hand-off; it starts the other commands in
-the target container.
+Three custom commands are involved. Run `foolfad` locally for the actual hand-off; it starts the
+other commands on the remote target.
 
-- **hettron-azure** runs locally. It authenticates to Azure through an isolated Azure CLI config,
-  selects a subscription, and deploys the fixed Hettron Azure Container Apps target with persistent
-  `/data` and `/nix` mounts. The target has a public Azure HTTPS URL guarded by Microsoft Easy Auth
-  for the selected account.
 - **foolfad** runs locally, inside the user's git project. It pushes the project's current state to
-  the target container as branch `foolfad/<run-id>`, then starts the remote work. It does not pull
+  the remote target as branch `foolfad/<run-id>`, then starts the remote work. It does not pull
   results back by itself. For a fixed command, that command must push its own changes. For an
   open-ended task, `boondoggle` commits and pushes the result.
-- **boondoggle** runs in the target container, inside the copied project. It gives a coding assistant,
+- **boondoggle** runs on the remote target, inside the copied project. It gives a coding assistant,
   such as Codex or Claude Code, a goal, lets it run until done, then commits changes and pushes them
   back on the run branch. Use it through `foolfad` when the task is open-ended, such as "make this
   feature work", rather than one exact command. Configure the assistant through `foolfad-config`; see
   `references/assistants-on-the-machine.md`.
-- **vusperize** runs in the target container and wraps the work so it can send live progress pings,
+- **vusperize** runs on the remote target and wraps the work so it can send live progress pings,
   for example to Telegram. Use it for long jobs or when the user asks for progress updates. If the
   user wants Telegram pings and they are not set up yet, see `references/setup-telegram.md`.
 
 `foolfad` reaches the target through a transport (see "Find the target") and starts `boondoggle` or
-`vusperize` there. The Hettron Azure target keeps its files between restarts, rebuilds project
-dependencies fresh each run, and has the remote-side tools installed. If no target exists, set one up
-with `references/provision-remote-machine.md`. Otherwise assume one exists.
+`vusperize` there. The Fly target keeps its files between restarts, rebuilds project dependencies
+fresh each run, and has the remote-side tools installed. If no target exists, set one up with
+`references/provision-remote-machine.md`. Otherwise assume one exists.
 
 ## Running the hand-off
 
-**Use Nix for every local offload command.** Offloading works cleanly only when the target can
-rebuild the project environment from `flake.nix`. That keeps dependencies and behavior consistent
-after the work moves.
+**Use Nixie directly for local offload dependencies.** Resolve `<skill-dir>` as the directory
+containing this `SKILL.md`. The Nixie-generated wrapper is `<skill-dir>/scripts/nix`. It behaves like
+the `nix` command: when system Nix is installed it delegates to system Nix, and when Nix is missing
+it downloads and runs Nixie's static Nix in the user's cache. It is not a custom package launcher.
 
-If `nix` is installed, use it directly. If `nix` is missing, use the bundled helper
-`scripts/nixie-nix.sh` from this skill directory. The helper uses [Nixie](https://github.com/nixie-dev/nixie):
-it downloads a generated Nix wrapper into the user's cache, then that wrapper downloads a static Nix
-binary into the user's cache and runs Nix without a privileged install. Nixie is alpha software, so
-if the fallback fails or the user wants a normal permanent Nix setup, point them at
-https://install.determinate.systems and offer to run the installer.
+The offload dependency environment is a small flake at `<skill-dir>/scripts/deps`. Use this command
+shape for local setup tools:
 
-For the rest of this skill, read `nix ...` as either system `nix ...` or, when Nix is unavailable,
-`<skill-dir>/scripts/nixie-nix.sh ...`. Resolve `<skill-dir>` as the directory containing this
-`SKILL.md`.
+```bash
+<skill-dir>/scripts/nix develop <skill-dir>/scripts/deps -c <command> ...
+```
 
-Prefer Nix-run invocations for the tissloolly tools in this workflow:
-`nix run github:ToxicPine/tissloolly#hettron-azure -- ...` for Azure setup,
-`nix run github:ToxicPine/tissloolly#foolfad -- -- ...` for hand-off, and
+For brevity, the rest of this skill writes that prefix as `<offload-nix>`. It provides local
+dependencies such as `fly`, `openssl`, `git`, `jq`, and the original `foolfad-transports` package
+(`foolfad-fly`, `foolfad-ssh`, `foolfad-tailscale`, etc). Run tissloolly commands such as
+`foolfad` and `foolfad-configure` through `<skill-dir>/scripts/nix run` or
+`<skill-dir>/scripts/nix shell` against `github:ToxicPine/tissloolly`.
+
+Examples:
+
+```bash
+<offload-nix> fly auth whoami
+<offload-nix> fly status -a <app>
+<skill-dir>/scripts/nix run github:ToxicPine/tissloolly#foolfad -- -- <command>
+```
+
+Offloading still works cleanly only when the target can rebuild the project environment from
+`flake.nix`. That keeps dependencies and behavior consistent after the work moves. On the target,
+prefer Nix-run invocations when commands are not already installed:
 `nix run github:ToxicPine/tissloolly#boondoggle` or
-`nix run github:ToxicPine/tissloolly#vusperize -- ...` on the target when those commands are not
-already installed. Transport adapters are in `foolfad-transports`; for the default Azure target use
-`nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-azure-container --hettron`.
+`nix run github:ToxicPine/tissloolly#vusperize -- ...`.
+
+**Fly CLI auth must be ready before provisioning a new target.** Use
+`<offload-nix> fly auth whoami` to check,
+`<offload-nix> fly auth login` to log in, and
+`<offload-nix> fly --help` or the Fly docs when a command option needs
+confirmation.
+
+**Fly targets must have Nestail auth enabled.** Before using a Fly target, ensure its app has
+`NESTAIL_AUTH_SECRET` set. Check with `<offload-nix> fly secrets list -a <app>`.
+If it is missing, generate a fresh secret with
+`<offload-nix> openssl rand -hex 32` and set it with
+`<offload-nix> fly secrets set -a <app> NESTAIL_AUTH_SECRET="$secret"`. Treat this
+as machine-level secret state; do not commit it, print it, or reuse a placeholder.
+
+**Authenticated Nestail links must be generated on the target.** The `nestail token ...`
+command needs the target's `NESTAIL_AUTH_SECRET`, so do not run it locally unless the local computer
+is the target. Use the saved `FOOLFAD_TRANSPORT` to run it remotely, or ask the Telegram
+conversational agent on the target to generate the link. For example:
+
+```bash
+printf '%s\n' 'nestail token 3000 /dashboard' | bash -c "$FOOLFAD_TRANSPORT"
+```
+
+If the remote does not have `nestail` on `PATH`, run the target-side equivalent that the machine
+provides, but keep the generation on the remote so the secret never leaves the machine.
 
 **Check the flake offload marker before doing anything with the flake.** Use `nix flake show` (or
 `nix flake show --json`) to look for top-level `x-offload`. Treat it as a hint, not a guarantee:
@@ -130,47 +156,50 @@ usually by adding or extending a `devShell` and `.envrc`. `foolfad` copies the w
 secret the devShell cannot provide must not travel as plaintext. Offer to encrypt it with `age` or
 `sops-nix`. Ask before changing anything.
 
-**Find the target.** `foolfad` reaches it through `FOOLFAD_TRANSPORT`. The default target is the
-Hettron Azure Container App deployed by `hettron-azure`, reached with:
-
-```bash
-FOOLFAD_TRANSPORT='nix shell github:ToxicPine/tissloolly#foolfad-transports -c foolfad-azure-container --hettron'
-```
+**Find the target.** `foolfad` reaches it through `FOOLFAD_TRANSPORT`, usually Fly:
+`<skill-dir>/scripts/nix develop <skill-dir>/scripts/deps -c foolfad-fly --app <app> --machine <machine-id>`.
+Plain SSH and Tailscale transports are still valid for user-managed boxes, but Fly is the default
+when this skill provisions the machine.
 
 - If `FOOLFAD_TRANSPORT` is set, use it.
-- If not, run `nix run github:ToxicPine/tissloolly#hettron-azure -- --json show`. When
-  `data.setupState` is `container-app-deployed`, set `FOOLFAD_TRANSPORT` to the Azure transport
-  above. The adapter derives the Hettron resource group from Hettron Azure state only because
-  `--hettron` is present. Pass `--subscription`, `--resource-group`, or `--name` instead when
-  targeting a non-Hettron Azure Container App.
-- If `show` reports any earlier `setupState`, tell the user setup is incomplete. Explain that setup
-  means deploying an Azure Container App, which can cost money. If they agree, follow
-  `references/provision-remote-machine.md`.
+- If not, check whether a Fly target already exists but is not selected. Use
+  `<offload-nix> fly status -a <app>` and
+  `<offload-nix> fly machine list -a <app>` if the app name is known; otherwise
+  use `<offload-nix> fly apps list` and ask only when there are multiple
+  plausible choices. Set `FOOLFAD_TRANSPORT` to reach the chosen target.
+- For an existing Fly app, check `<offload-nix> fly secrets list -a <app>` and set a generated
+  `NESTAIL_AUTH_SECRET` if missing. Tell the user this may restart the Fly Machine.
+- If no target exists, tell the user setup means renting a small server from Fly.io, which costs
+  money. If they agree, follow `references/provision-remote-machine.md`.
 - If the target exists but `foolfad` cannot reach the repo or push results back, use
   `foolfad-config` to check and configure its GitHub access.
 
 **Hand it off.**
 
-- One exact command: `nix run github:ToxicPine/tissloolly#foolfad -- -- <command>`. This runs on the
+- One exact command: `<skill-dir>/scripts/nix run github:ToxicPine/tissloolly#foolfad -- -- <command>`. This runs on the
   remote branch. To return changes, the command must commit and push them itself.
 - Open-ended task:
-  `nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'printf "%s" "<task>" | nix run github:ToxicPine/tissloolly#boondoggle'`.
+  `<skill-dir>/scripts/nix run github:ToxicPine/tissloolly#foolfad -- -- bash -lc 'printf "%s" "<task>" | nix run github:ToxicPine/tissloolly#boondoggle'`.
   The configured assistant works until done, then pushes the result back as a branch. This requires
   an assistant, such as Codex or Claude Code, configured through `foolfad-config`
   (`references/assistants-on-the-machine.md`).
 
-The work starts inside the project directory in the target container, so the environment (`devShell`,
+The work starts inside the project directory on the remote target, so the environment (`devShell`,
 `.envrc`) loads on its own. Do not wrap the command in `cd` or `nix develop`. For long jobs or
-progress pings, wrap the command with `vusperize`, which runs alongside it in the target container.
+progress pings, wrap the command with `vusperize`, which runs alongside it on the remote target.
 
 **Report back.** Tell the user which branch receives the work, which target ran it, and how to check
 progress later. `foolfad-target` and `boondoggle-runs` are target-side skills. They are useful when
-the user talks to an agent in the target container, for example over Telegram. If the user is local
+the user talks to an agent on the remote target, for example over Telegram. If the user is local
 only, use `FOOLFAD_TRANSPORT` to run a target-side command that asks the remote agent or Codex to
 inspect the run and print the answer back locally.
 
+When reporting a dev-server URL for a Fly target with Nestail auth enabled, generate the shareable
+URL on the remote target with `nestail token <port> <path>` through `FOOLFAD_TRANSPORT`, or have the
+Telegram agent on the target do it. Do not construct a grant URL locally and do not ask the user to
+copy `NESTAIL_AUTH_SECRET` back to their local shell.
+
 ## Follow-up questions
 
-For how to view a dev server through the public Hettron URL, why an address won't load, or who else
-can see it, read
-`references/frequently-asked-questions.md` before answering.
+For how to view a dev server through the public Fly URL, why an address won't load, or who else can
+see it, read `references/frequently-asked-questions.md` before answering.

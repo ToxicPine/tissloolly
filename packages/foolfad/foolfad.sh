@@ -32,16 +32,13 @@ Provide a command with --command, FOOLFAD_COMMAND, or -- COMMAND [ARG...].
 
 The transport is a single command string whose job is to take a script on its
 stdin, run it on the remote machine/container, and forward stdout/stderr and the
-exit status. The adapters foolfad-ssh, foolfad-tailscale, foolfad-fly, and
-foolfad-azure-container provide this; you can also point it at anything else
-(e.g. kubectl exec).
+exit status. The adapters foolfad-ssh, foolfad-tailscale, and foolfad-fly
+provide this; you can also point it at anything else (e.g. kubectl exec).
 
 Set it with --transport or FOOLFAD_TRANSPORT, for example:
   FOOLFAD_TRANSPORT='foolfad-ssh box.lab'
   FOOLFAD_TRANSPORT='foolfad-tailscale box.lab'
   FOOLFAD_TRANSPORT='foolfad-fly --app my-app --machine 0123456789'
-  FOOLFAD_TRANSPORT='foolfad-azure-container --subscription ... --resource-group ... --name ...'
-  FOOLFAD_TRANSPORT='foolfad-azure-container --hettron'
 
 Examples:
   foolfad -- npm run dev
