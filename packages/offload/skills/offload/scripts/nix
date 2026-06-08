@@ -375,7 +375,7 @@ exists_newer__180_v0() {
     local left_2800="${1}"
     local right_2801="${2}"
     local command_23
-    command_23="$(stat -c %W ${left_2800})"
+    command_23="$(stat -f %m ${left_2800} 2>/dev/null || stat -c %Y ${left_2800})"
     __status=$?
     parse_int__14_v0 "${command_23}"
     __status=$?
@@ -385,7 +385,7 @@ exists_newer__180_v0() {
     fi
     local left_time_2803="${ret_parse_int14_v0}"
     local command_24
-    command_24="$(stat -c %W ${right_2801})"
+    command_24="$(stat -f %m ${right_2801} 2>/dev/null || stat -c %Y ${right_2801})"
     __status=$?
     parse_int__14_v0 "${command_24}"
     __status=$?
@@ -444,9 +444,9 @@ untar__184_v0() {
     local dump_113="${2}"
     dump_archive__183_v0 
     local archive_119="${ret_dump_archive183_v0}"
-    local tar_cmd_120="tar -x ${member_112} -f ${archive_119}"
+    local tar_cmd_120="tar -x -f ${archive_119} ${member_112}"
     if [ "${dump_113}" != 0 ]; then
-        tar_cmd_120="tar -x -O ${member_112} -f ${archive_119}"
+        tar_cmd_120="tar -x -O -f ${archive_119} ${member_112}"
     fi
     local command_26
     command_26="$(${tar_cmd_120})"
@@ -506,7 +506,13 @@ get_machine__196_v0() {
     __status=$?
     local machine_2810="${command_31}"
     if [ "$([ "_${machine_2810}" != "_arm64" ]; echo $?)" != 0 ]; then
-        ret_get_machine196_v0="aarch64"
+        get_osname__195_v0
+        local osname_for_machine_2810="${ret_get_osname195_v0}"
+        if [ "$([ "_${osname_for_machine_2810}" != "_Darwin" ]; echo $?)" != 0 ]; then
+            ret_get_machine196_v0="arm64"
+        else
+            ret_get_machine196_v0="aarch64"
+        fi
         return 0
     fi
     ret_get_machine196_v0="${machine_2810}"
@@ -1746,9 +1752,9 @@ populate_extras__483_v0() {
     local ret_get_osname195_v0__162_8="${ret_get_osname195_v0}"
     is_nix_installed__479_v0 
     local ret_is_nix_installed479_v0__162_41="${ret_is_nix_installed479_v0}"
-    if [ "$(( $([ "_${ret_get_osname195_v0__162_8}" == "_Darwin" ]; echo $?) && $(( ! ret_is_nix_installed479_v0__162_41 )) ))" != 0 ]; then
+    if [ "$([ "_${ret_get_osname195_v0__162_8}" != "_Darwin" ]; echo $?)" != 0 ] && [ "$(( ! ret_is_nix_installed479_v0__162_41 ))" != 0 ]; then
         local command_71
-        command_71="$(readlink -f ${nix_root_2793})"
+        command_71="$(mkdir -p ${nix_root_2793} && cd ${nix_root_2793} && pwd -P)"
         __status=$?
         args_2789+=("--store" "${command_71}")
     fi
