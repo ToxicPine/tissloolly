@@ -176,6 +176,12 @@ secret the devShell cannot provide must not travel as plaintext. Offer to encryp
 Plain SSH and Tailscale transports are still valid for user-managed boxes, but Fly is the default
 when this skill provisions the machine.
 
+- Before deciding whether `FOOLFAD_TRANSPORT` is set, pull in the saved local transport  file if it exists:
+  ```bash
+  if [ -z "${FOOLFAD_TRANSPORT:-}" ] && [ -r "$HOME/.offload-skill-transport" ]; then
+    . "$HOME/.offload-skill-transport"
+  fi
+  ```
 - If `FOOLFAD_TRANSPORT` is set, use it.
 - If `FOOLFAD_TRANSPORT` is not set, fail fast. Do not use `fly`, `flyctl`,
   `foolfad-fly`, or any provider-specific discovery command to search for a

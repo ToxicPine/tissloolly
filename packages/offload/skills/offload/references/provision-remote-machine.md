@@ -1,9 +1,9 @@
 # Set Up a Fly Machine for Offloaded Work
 
-Use this only when no target machine exists: `FOOLFAD_TRANSPORT` is unset and you cannot find an
-existing Fly app/machine or user-managed server. This is one-time setup. It rents a small Fly.io
-Machine, deploys the offload image, gives it persistent storage, and saves the transport command
-`foolfad` needs.
+Use this only when no target machine exists: after selectively sourcing
+`~/.offload-skill-transport`, `FOOLFAD_TRANSPORT` is unset and you cannot find an existing Fly
+app/machine or user-managed server. This is one-time setup. It rents a small Fly.io Machine, deploys
+the offload image, gives it persistent storage, and saves the transport command `foolfad` needs.
 
 This rents real compute and stores secrets. Confirm with the user before any step that costs money
 or saves a token, password, or key.
@@ -156,21 +156,26 @@ extra Machines or volumes, because that can delete state.
 
 ## 7. Save the foolfad transport
 
-Set `FOOLFAD_TRANSPORT` to the full Nixie-backed Fly transport so it works even when `foolfad-fly`
-is not globally installed:
+Save `FOOLFAD_TRANSPORT` in `~/.offload-skill-transport`. Use the full Nixie-backed Fly transport
+so it works even when `foolfad-fly` is not globally installed:
 
 ```bash
+cat > "$HOME/.offload-skill-transport" <<'EOF'
 export FOOLFAD_TRANSPORT='<skill-dir>/scripts/nix develop <skill-dir>/scripts/deps -c foolfad-fly --app <app> --machine <machine-id>'
+EOF
+chmod 600 "$HOME/.offload-skill-transport"
 ```
 
-Save it somewhere the user's shells load it. Good options include a shell profile, direnv, or the
-environment for the skill's deps flake (for example, a local `shellHook` in
-`<skill-dir>/scripts/deps/flake.nix` if that checkout is user-specific). Keep the app and Machine ID
-local to the user's setup rather than treating them as portable skill defaults.
+Keep the app and Machine ID local to the user's setup rather than treating them as portable skill
+defaults. Do not require the user's shell profile or project direnv to load the file globally; source
+it only in commands that need to check or use the saved offload target.
 
 Optionally verify the saved connection with a command that only uses POSIX shell builtins:
 
 ```bash
+if [ -z "${FOOLFAD_TRANSPORT:-}" ] && [ -r "$HOME/.offload-skill-transport" ]; then
+  . "$HOME/.offload-skill-transport"
+fi
 printf '%s\n' 'printf "%s\n" remote-ok; pwd' | bash -c "$FOOLFAD_TRANSPORT"
 ```
 
@@ -196,6 +201,9 @@ Use the `foolfad-config` skill for this setup. It runs `foolfad-configure` over 
 `foolfad` will use:
 
 ```bash
+if [ -z "${FOOLFAD_TRANSPORT:-}" ] && [ -r "$HOME/.offload-skill-transport" ]; then
+  . "$HOME/.offload-skill-transport"
+fi
 <skill-dir>/scripts/nix shell github:ToxicPine/tissloolly#foolfad-config -c foolfad-configure --transport "$FOOLFAD_TRANSPORT" gh check
 <skill-dir>/scripts/nix shell github:ToxicPine/tissloolly#foolfad-config -c foolfad-configure --transport "$FOOLFAD_TRANSPORT" gh configure
 ```
