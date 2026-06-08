@@ -8,6 +8,25 @@ Machine, deploys the offload image, gives it persistent storage, and saves the t
 This rents real compute and stores secrets. Confirm with the user before any step that costs money
 or saves a token, password, or key.
 
+## User-facing setup flow
+
+Keep status updates plain and phase-based. Good wording:
+
+- "I don't see a saved remote computer for this project yet."
+- "Fly.io is logged in as `<account>`."
+- "Before I create it, choose either a generated name like `offload-abc123def456` or your own app
+  name, and choose a region."
+- "The app is created. I am adding the required secrets before starting it."
+- "The remote computer is running. I am saving the connection details locally."
+- "Next I need to connect the remote computer to GitHub so it can fetch and push branches for this
+  project."
+- "After that I will run a tiny end-to-end check, then run your original request."
+
+Avoid user-facing phrases such as `FOOLFAD_TRANSPORT`, `x-offload`, "transport works", "Machine ID",
+"flake marker", and "hand-off" unless the user asks for details, the exact command requires them, or
+an error message contains them. It is fine to use those terms in internal commands and final
+technical summaries.
+
 Use the official Fly.io CLI, `fly`, for provisioning and management through the offload Nixie
 dependency environment:
 
@@ -144,7 +163,20 @@ is not globally installed:
 export FOOLFAD_TRANSPORT='<skill-dir>/scripts/nix develop <skill-dir>/scripts/deps -c foolfad-fly --app <app> --machine <machine-id>'
 ```
 
-Save it somewhere the user's shells load it, such as a shell profile, direnv, etc.
+Save it somewhere the user's shells load it. Good options include a shell profile, direnv, or the
+environment for the skill's deps flake (for example, a local `shellHook` in
+`<skill-dir>/scripts/deps/flake.nix` if that checkout is user-specific). Keep the app and Machine ID
+local to the user's setup rather than treating them as portable skill defaults.
+
+Optionally verify the saved connection with a command that only uses POSIX shell builtins:
+
+```bash
+printf '%s\n' 'printf "%s\n" remote-ok; pwd' | bash -c "$FOOLFAD_TRANSPORT"
+```
+
+Do not use incidental tools such as `hostname` for this check; the target image may not include
+them. Do not tell the user "the transport works". Say the remote computer is reachable, then move to
+GitHub setup.
 
 ## 8. Configure GitHub and assistants before any hand-off
 
@@ -154,6 +186,11 @@ needs GitHub credentials that can read and write the user's repos, plus a name a
 Open-ended hand-offs also need the chosen coding assistant, such as Codex or Claude Code, configured
 on the machine. Private repo cloning fails without GitHub setup, so configure this before the first
 real hand-off.
+
+Before running these commands, tell the user:
+
+> The remote computer is running. Next I need to connect it to GitHub so it can fetch this project
+> and push result branches back.
 
 Use the `foolfad-config` skill for this setup. It runs `foolfad-configure` over the same transport
 `foolfad` will use:
@@ -177,6 +214,8 @@ Do one trivial hand-off end to end before sending important work, e.g. from a te
 
 Confirm the run branch shows up and the machine reached the repo. Once that is clean, go back to the
 offload skill and send the real task.
+
+Tell the user this is a final setup check before their requested command, not another setup choice.
 
 ## Maintenance commands
 

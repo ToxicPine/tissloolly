@@ -27,6 +27,21 @@ technical jargon such as Fly Machines, Nix, `foolfad`, Nixie, or transport adapt
 only if the user requests more detail, demonstrates familiarity, when providing exact command lines,
 or when relaying an error that includes them.
 
+Do not expose setup probes in user-facing narration. For example, do not say "`FOOLFAD_TRANSPORT` is
+unset" or "the flake has no `x-offload` marker" unless the user asks for implementation details.
+Say that no saved remote computer is configured for this project yet.
+
+When setup is needed, keep the user oriented around the visible phases:
+
+- Create the remote computer.
+- Add the required secrets before starting it.
+- Save the local connection details.
+- Connect the remote computer to GitHub so it can fetch and push branches.
+- Run a tiny end-to-end check, then run the requested work.
+
+Do not describe a raw connection check as "the transport works" to the user. Say the remote computer
+is reachable, then immediately explain the next visible requirement.
+
 When no target is set up yet, say something like:
 
 > I can help you set up a remote computer on Fly.io. It will require logging in with your Fly.io
@@ -164,7 +179,7 @@ when this skill provisions the machine.
 - If `FOOLFAD_TRANSPORT` is set, use it.
 - If `FOOLFAD_TRANSPORT` is not set, fail fast. Do not use `fly`, `flyctl`,
   `foolfad-fly`, or any provider-specific discovery command to search for a
-  possible target. Tell the user there is no remote machine configured, and
+  possible target. Tell the user there is no saved remote computer configured, and
   offer to help find an existing machine or set one up before offloading.
 - For an existing Fly app, check `<offload-nix> fly secrets list -a <app>` and set a generated
   `NESTAIL_AUTH_SECRET` if missing. Tell the user this may restart the Fly Machine.
