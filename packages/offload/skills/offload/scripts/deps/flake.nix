@@ -3,7 +3,7 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.tissloolly = {
-    url = "path:../../../../../..";
+    url = "github:ToxicPine/tissloolly";
     flake = false;
   };
 

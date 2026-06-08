@@ -25,14 +25,18 @@
     "tissloolly": {
       "flake": false,
       "locked": {
-        "path": "../../../../../..",
-        "type": "path"
+        "lastModified": 1780935992,
+        "narHash": "sha256-0uE0opveZktxf8fcJ6WtlRxan2nSdgcbZvK4kleJcvY=",
+        "owner": "ToxicPine",
+        "repo": "tissloolly",
+        "rev": "4757cdc733b0170ee044efb147dee329e269d215",
+        "type": "github"
       },
       "original": {
-        "path": "../../../../../..",
-        "type": "path"
-      },
-      "parent": []
+        "owner": "ToxicPine",
+        "repo": "tissloolly",
+        "type": "github"
+      }
     }
   },
   "root": "root",
