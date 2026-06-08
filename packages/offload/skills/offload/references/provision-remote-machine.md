@@ -32,8 +32,20 @@ is also available.
 
 ## 2. Pick the app name and region
 
-Choose a globally unique Fly app name, such as `offload-<user-or-project>`. Ask if the name affects
-billing, ownership, or sharing; otherwise propose a clear name and continue.
+Offer the user two app-name choices before creating anything:
+
+- Generate a pseudorandom name with a 12-character lowercase alphanumeric suffix, for example
+  `offload-<suffix>`.
+- Use a Fly app name of their own choice.
+
+For the generated option, use the existing OpenSSL dependency:
+
+```bash
+suffix="$(<offload-nix> openssl rand -hex 6)"
+app="offload-${suffix}"
+```
+
+Beyond this required name choice, ask only when the name affects billing, ownership, or sharing.
 
 Pick a region close to where the user normally works. If unsure, run
 `<offload-nix> fly platform regions` and use a nearby region. The template
