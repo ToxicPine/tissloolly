@@ -16,7 +16,7 @@ Keep status updates plain and phase-based. Good wording:
 - "Fly.io is logged in as `<account>`."
 - "Before I create it, choose either a generated name like `offload-abc123def456` or your own app
   name, and choose a region."
-- "The app is created. I am adding the required secrets before starting it."
+- "The remote computer is created. I am adding the required secrets before starting it."
 - "The remote computer is running. I am saving the connection details locally."
 - "Next I need to connect the remote computer to GitHub so it can fetch and push branches for this
   project."
